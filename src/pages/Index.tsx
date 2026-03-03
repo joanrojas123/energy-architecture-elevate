@@ -20,8 +20,13 @@ const EMPTY_METRICS: DashboardMetrics = {
   upo: 0,
   enTransito: 0,
   pendientes: 0,
+  totalEntregadas: 0,
+  canceladasRechazadas: 0,
+  marcasUnicas: 0,
+  estrellasUnicas: 0,
   semCrecimiento: 0,
   diaOrdenesHoy: 0,
+  diaRevenueHoy: 0,
 };
 
 const Index = () => {
@@ -60,6 +65,7 @@ const Index = () => {
         onMesChange={setSelectedMes}
         semCrecimiento={metrics.semCrecimiento}
         diaOrdenesHoy={metrics.diaOrdenesHoy}
+        diaRevenueHoy={metrics.diaRevenueHoy}
         onFileUpload={handleFileUpload}
         hasData={hasData}
       />

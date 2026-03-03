@@ -1,12 +1,8 @@
 import { useRef } from "react";
-import { Upload, TrendingUp, TrendingDown, Calendar, BarChart3 } from "lucide-react";
+import { Upload, TrendingUp, TrendingDown, Calendar, BarChart3, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 interface DashboardHeaderProps {
@@ -15,18 +11,17 @@ interface DashboardHeaderProps {
   onMesChange: (mes: string) => void;
   semCrecimiento: number;
   diaOrdenesHoy: number;
+  diaRevenueHoy: number;
   onFileUpload: (file: File) => void;
   hasData: boolean;
 }
 
+const fmt = (n: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
+
 const DashboardHeader = ({
-  meses,
-  selectedMes,
-  onMesChange,
-  semCrecimiento,
-  diaOrdenesHoy,
-  onFileUpload,
-  hasData,
+  meses, selectedMes, onMesChange, semCrecimiento,
+  diaOrdenesHoy, diaRevenueHoy, onFileUpload, hasData,
 }: DashboardHeaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +68,12 @@ const DashboardHeader = ({
                 <span className="font-medium">Hoy</span>
                 <span className="font-semibold">{diaOrdenesHoy}</span>
                 <span className="text-muted-foreground">órdenes</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                <DollarSign className="h-4 w-4 text-success" />
+                <span className="font-medium">Rev Hoy</span>
+                <span className="font-semibold text-success">{fmt(diaRevenueHoy)}</span>
               </div>
             </>
           )}
