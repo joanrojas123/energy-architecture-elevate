@@ -1,18 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { isLostOrder, getUniqueValues, type SalesRow } from "@/lib/csv-processor";
@@ -46,7 +37,8 @@ const DataTable = ({ data }: DataTableProps) => {
         (r) =>
           r.order_id.toLowerCase().includes(q) ||
           r.estado_actual.toLowerCase().includes(q) ||
-          r.marca.toLowerCase().includes(q)
+          r.marca.toLowerCase().includes(q) ||
+          r.estrella_nombre.toLowerCase().includes(q)
       );
     }
     return result;
@@ -73,27 +65,21 @@ const DataTable = ({ data }: DataTableProps) => {
             />
           </div>
           <Select value={transportadora} onValueChange={(v) => { setTransportadora(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[150px] bg-background text-sm">
-              <SelectValue placeholder="Transportadora" />
-            </SelectTrigger>
+            <SelectTrigger className="h-9 w-[150px] bg-background text-sm"><SelectValue placeholder="Transportadora" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {transportadoras.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={marca} onValueChange={(v) => { setMarca(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-sm">
-              <SelectValue placeholder="Marca" />
-            </SelectTrigger>
+            <SelectTrigger className="h-9 w-[130px] bg-background text-sm"><SelectValue placeholder="Marca" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {marcas.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={ciudad} onValueChange={(v) => { setCiudad(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[140px] bg-background text-sm">
-              <SelectValue placeholder="Ciudad" />
-            </SelectTrigger>
+            <SelectTrigger className="h-9 w-[140px] bg-background text-sm"><SelectValue placeholder="Ciudad" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {ciudades.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -102,13 +88,14 @@ const DataTable = ({ data }: DataTableProps) => {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead className="font-semibold">Order ID</TableHead>
               <TableHead className="font-semibold">Estado</TableHead>
               <TableHead className="font-semibold">Marca</TableHead>
+              <TableHead className="font-semibold">Estrella</TableHead>
               <TableHead className="font-semibold text-right">Unidades</TableHead>
               <TableHead className="font-semibold text-right">PVP Total</TableHead>
               <TableHead className="font-semibold">Transportadora</TableHead>
@@ -119,7 +106,7 @@ const DataTable = ({ data }: DataTableProps) => {
           <TableBody>
             {paged.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   No se encontraron registros.
                 </TableCell>
               </TableRow>
@@ -128,7 +115,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 const lost = isLostOrder(row.estado_actual);
                 return (
                   <TableRow
-                    key={`${row.order_id}-${i}`}
+                    key={`${row.order_id}-${row.producto}-${i}`}
                     className={lost ? "bg-error/5 hover:bg-error/10" : ""}
                   >
                     <TableCell className="font-mono text-xs">{row.order_id}</TableCell>
@@ -146,6 +133,7 @@ const DataTable = ({ data }: DataTableProps) => {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm">{row.marca}</TableCell>
+                    <TableCell className="text-sm">{row.estrella_nombre}</TableCell>
                     <TableCell className="text-right font-medium">{row.unidades}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(row.pvp_total)}</TableCell>
                     <TableCell className="text-sm">{row.transportadora}</TableCell>
