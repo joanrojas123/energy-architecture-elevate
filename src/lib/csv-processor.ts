@@ -67,9 +67,9 @@ export function parseCSV(file: File): Promise<SalesRow[]> {
           pvp_total: parseFloat(row.pvp_total || row.PVP_Total || row.PVP_TOTAL || "0") || 0,
           estado_actual: (row.estado_actual || row.Estado_Actual || row.ESTADO_ACTUAL || "").toString().trim(),
           transportadora: (row.transportadora || row.Transportadora || row.TRANSPORTADORA || "").toString().trim(),
-          marca: (row.marca || row.Marca || row.MARCA || "").toString().trim(),
+          marca: (row.marca_proveedor || row.Marca_Proveedor || row.MARCA_PROVEEDOR || row.marca || row.Marca || row.MARCA || "").toString().trim(),
           ciudad: (row.ciudad || row.Ciudad || row.CIUDAD || "").toString().trim(),
-          fecha_creacion: (row.fecha_creacion || row.Fecha_Creacion || row.FECHA_CREACION || "").toString().trim(),
+          fecha_creacion: (row.fecha_hora_creacion || row.Fecha_Hora_Creacion || row.FECHA_HORA_CREACION || row.fecha_creacion || row.Fecha_Creacion || row.FECHA_CREACION || "").toString().trim(),
           mes_id: (row.mes_id || row.Mes_ID || row.MES_ID || "").toString().trim(),
           semana: (row.semana || row.Semana || row.SEMANA || "").toString().trim(),
         }));
@@ -90,11 +90,19 @@ export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
   // Rows not cancelled/rejected
   const activeRows = rows.filter((r) => !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)));
 
-  // Total Unidades (excluding cancelado/rechazado)
+  // Total Unidades: sum ALL rows of unidades (excluding cancelado/rechazado)
   const totalUnidades = activeRows.reduce((sum, r) => sum + r.unidades, 0);
 
-  // Total Revenue PVP (pvp_total * unidades, excluding cancelado/rechazado)
-  const totalRevenue = activeRows.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
+  // Total Revenue PVP: pvp_total UNA VEZ por order_id único (excluding cancelado/rechazado)
+  // Deduplicate: take pvp_total from the first row of each unique order_id
+  const seenOrders = new Map<string, number>();
+  for (const r of activeRows) {
+    if (!seenOrders.has(r.order_id)) {
+      seenOrders.set(r.order_id, r.pvp_total);
+    }
+  }
+  const totalRevenue = Array.from(seenOrders.values()).reduce((sum, pvp) => sum + pvp, 0);
+  const activeOrderCount = seenOrders.size;
 
   // Tasa de Éxito: unique orders with 'entregado' / total unique orders
   const entregadoOrders = new Set(
@@ -102,12 +110,11 @@ export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
   );
   const tasaExito = totalOrdenes > 0 ? (entregadoOrders.size / totalOrdenes) * 100 : 0;
 
-  // AOV = Revenue / Total Órdenes (active)
-  const activeOrders = new Set(activeRows.map((r) => r.order_id));
-  const aov = activeOrders.size > 0 ? totalRevenue / activeOrders.size : 0;
+  // AOV = Revenue (deduplicado) / Órdenes únicas activas
+  const aov = activeOrderCount > 0 ? totalRevenue / activeOrderCount : 0;
 
-  // UPO = Total Unidades / Total Órdenes (active)
-  const upo = activeOrders.size > 0 ? totalUnidades / activeOrders.size : 0;
+  // UPO = Total Unidades / Total Órdenes únicas
+  const upo = totalOrdenes > 0 ? totalUnidades / totalOrdenes : 0;
 
   // En Tránsito: unique IDs with transit states
   const enTransitoOrders = new Set(
