@@ -4,6 +4,7 @@ import KPICards from "@/components/dashboard/KPICards";
 import DataTable from "@/components/dashboard/DataTable";
 import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
+import GoalsSection from "@/components/dashboard/GoalsSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   fetchVentas,
@@ -99,6 +100,7 @@ const Index = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
+              <TabsTrigger value="metas">Metas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resumen" className="space-y-6">
@@ -109,6 +111,10 @@ const Index = () => {
 
             <TabsContent value="tendencias">
               <TrendsSection data={rawData} />
+            </TabsContent>
+
+            <TabsContent value="metas">
+              <GoalsSection data={rawData} selectedMes={selectedMes} />
             </TabsContent>
           </Tabs>
         )}
