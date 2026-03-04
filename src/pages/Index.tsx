@@ -50,8 +50,8 @@ const Index = () => {
   }, [rawData, selectedMes]);
 
   const metrics = useMemo(
-    () => (filteredData.length > 0 ? calculateMetrics(filteredData) : EMPTY_METRICS),
-    [filteredData]
+    () => (filteredData.length > 0 ? calculateMetrics(filteredData, rawData) : EMPTY_METRICS),
+    [filteredData, rawData]
   );
 
   const hasData = rawData.length > 0;
