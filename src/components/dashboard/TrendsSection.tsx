@@ -39,7 +39,8 @@ function buildMonthlyStats(rows: SalesRow[]) {
     const excluded = ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual));
     if (!excluded) {
       map[p].orders.add(r.order_id);
-      map[p].revenue += r.pvp_total * r.unidades;
+      const rev = r.pvp_total * r.unidades;
+      if (!isNaN(rev) && rev > 0) map[p].revenue += rev;
       map[p].units += r.unidades;
       if (normalize(r.estado_actual) === "entregado") map[p].entregadas.add(r.order_id);
     }
