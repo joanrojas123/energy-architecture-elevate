@@ -13,6 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, Cell,
 } from "recharts";
+import LogisticaTablaMaestra from "./LogisticaTablaMaestra";
 
 interface LogRow {
   period: string;
@@ -316,32 +317,65 @@ const LogisticaAvanzadaSection = () => {
         ))}
       </div>
 
-      {/* Funnel */}
+      {/* Funnel + Explanatory Panel */}
       <SectionHeader title="Embudo de Tiempos por Tramo" />
-      <Card className="border border-border shadow-sm">
-        <CardContent className="p-4">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={funnelData} layout="vertical" margin={{ left: 10, right: 30 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="number" tick={{ fontSize: 11 }} label={{ value: "Avg horas", position: "insideBottomRight", offset: -5, fontSize: 10 }} />
-              <YAxis type="category" dataKey="tramo" width={180} tick={{ fontSize: 10 }} />
-              <RTooltip
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                formatter={(value: number, _: any, entry: any) => [
-                  `${value.toFixed(1)} h (${entry.payload.count} transiciones)`, "Promedio"
-                ]}
-              />
-              <Bar dataKey="avg" radius={[0, 4, 4, 0]}>
-                {funnelData.map((d, i) => {
-                  const ratio = d.avg / maxFunnelAvg;
-                  const h = Math.round(120 - ratio * 120); // 120=green → 0=red
-                  return <Cell key={i} fill={`hsl(${h}, 75%, 50%)`} />;
-                })}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-3">
+        <Card className="border border-border shadow-sm">
+          <CardContent className="p-4">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={funnelData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tick={{ fontSize: 11 }} label={{ value: "Avg horas", position: "insideBottomRight", offset: -5, fontSize: 10 }} />
+                <YAxis type="category" dataKey="tramo" width={180} tick={{ fontSize: 10 }} />
+                <RTooltip
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  formatter={(value: number, _: any, entry: any) => [
+                    `${value.toFixed(1)} h (${entry.payload.count} transiciones)`, "Promedio"
+                  ]}
+                />
+                <Bar dataKey="avg" radius={[0, 4, 4, 0]}>
+                  {funnelData.map((d, i) => {
+                    const ratio = d.avg / maxFunnelAvg;
+                    const h = Math.round(120 - ratio * 120);
+                    return <Cell key={i} fill={`hsl(${h}, 75%, 50%)`} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-chart-purple/30 bg-card/80 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs font-semibold text-foreground">¿Cómo leer este embudo?</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Cada barra muestra el tiempo promedio que tarda una orden en cada etapa:
+            </p>
+            <div className="space-y-2.5 text-[11px] leading-relaxed">
+              <div>
+                <span className="font-semibold text-pending">🟡 Tramo 0 — La marca recibe el pedido:</span>{" "}
+                <span className="text-muted-foreground">tiempo desde que se crea la orden hasta que genera la guía. Si es largo, la marca tarda en reaccionar.</span>
+              </div>
+              <div>
+                <span className="font-semibold" style={{ color: "hsl(30, 85%, 55%)" }}>🟠 Tramo 1 — Alistamiento:</span>{" "}
+                <span className="text-muted-foreground">tiempo desde la guía hasta que el paquete llega a bodega. Si es largo, la marca tarda en empacar.</span>
+              </div>
+              <div>
+                <span className="font-semibold text-info">🔵 Tramo 2 — Viaje nacional:</span>{" "}
+                <span className="text-muted-foreground">tiempo viajando por Colombia. Depende 100% de la transportadora.</span>
+              </div>
+              <div>
+                <span className="font-semibold text-success">🟢 Tramo 3 — Entrega final:</span>{" "}
+                <span className="text-muted-foreground">tiempo desde que llega a la ciudad hasta que lo recibe el cliente.</span>
+              </div>
+              <div className="pt-1 border-t border-border">
+                <span className="font-semibold text-foreground">💡</span>{" "}
+                <span className="text-muted-foreground">La barra más larga = el cuello de botella = donde debes actuar primero.</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Carrier Table */}
       <SectionHeader title="Análisis por Transportadora" />
@@ -489,6 +523,9 @@ const LogisticaAvanzadaSection = () => {
           </Table>
         </div>
       </Card>
+      {/* Tabla Maestra */}
+      <SectionHeader title="Tabla Maestra de Órdenes Logísticas" />
+      <LogisticaTablaMaestra data={filtered} />
     </div>
   );
 };
