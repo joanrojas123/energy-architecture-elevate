@@ -6,8 +6,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import { isLostOrder, getUniqueValues, type SalesRow } from "@/lib/csv-processor";
-import { Search } from "lucide-react";
+import { Search, CalendarIcon, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface DataTableProps {
   data: SalesRow[];
@@ -15,25 +22,74 @@ interface DataTableProps {
 
 const PAGE_SIZE = 25;
 
+/** Parse M/D/YYYY string to Date */
+function parseMDY(s: string): Date | null {
+  if (!s) return null;
+  const parts = s.split("/");
+  if (parts.length !== 3) return null;
+  const m = parseInt(parts[0], 10);
+  const d = parseInt(parts[1], 10);
+  const y = parseInt(parts[2], 10);
+  if (isNaN(m) || isNaN(d) || isNaN(y)) return null;
+  return new Date(y, m - 1, d);
+}
+
+/** Extract HH:MM from hora_col which may be a full ISO string or just time */
+function formatHora(raw: string): string {
+  if (!raw) return "";
+  // If it contains "T" it's ISO-like, extract time part
+  if (raw.includes("T")) {
+    const timePart = raw.split("T")[1];
+    if (timePart) return timePart.substring(0, 5);
+  }
+  // If it contains a space, take what's after the last space (time portion)
+  if (raw.includes(" ")) {
+    const parts = raw.trim().split(" ");
+    const timePart = parts[parts.length - 1];
+    if (timePart && timePart.includes(":")) return timePart.substring(0, 5);
+  }
+  // If it already looks like HH:MM or HH:MM:SS, truncate
+  if (raw.includes(":")) return raw.substring(0, 5);
+  return raw;
+}
+
 const DataTable = ({ data }: DataTableProps) => {
-  const [transportadora, setTransportadora] = useState("all");
-  const [marca, setMarca] = useState("all");
   const [estado, setEstado] = useState("all");
-  const [ciudad, setCiudad] = useState("all");
+  const [marca, setMarca] = useState("all");
+  const [estrella, setEstrella] = useState("all");
+  const [transportadora, setTransportadora] = useState("all");
+  const [producto, setProducto] = useState("all");
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>(undefined);
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
 
-  const transportadoras = useMemo(() => getUniqueValues(data, "shipping_company"), [data]);
-  const marcas = useMemo(() => getUniqueValues(data, "marca"), [data]);
   const estados = useMemo(() => getUniqueValues(data, "estado_actual"), [data]);
-  const ciudades = useMemo(() => getUniqueValues(data, "ciudad"), [data]);
+  const marcas = useMemo(() => getUniqueValues(data, "marca"), [data]);
+  const estrellas = useMemo(() => getUniqueValues(data, "estrella_nombre"), [data]);
+  const transportadoras = useMemo(() => getUniqueValues(data, "shipping_company"), [data]);
+  const productos = useMemo(() => getUniqueValues(data, "producto"), [data]);
 
   const filtered = useMemo(() => {
     let result = data;
-    if (transportadora !== "all") result = result.filter((r) => r.shipping_company === transportadora);
-    if (marca !== "all") result = result.filter((r) => r.marca === marca);
     if (estado !== "all") result = result.filter((r) => r.estado_actual === estado);
-    if (ciudad !== "all") result = result.filter((r) => r.ciudad === ciudad);
+    if (marca !== "all") result = result.filter((r) => r.marca === marca);
+    if (estrella !== "all") result = result.filter((r) => r.estrella_nombre === estrella);
+    if (transportadora !== "all") result = result.filter((r) => r.shipping_company === transportadora);
+    if (producto !== "all") result = result.filter((r) => r.producto === producto);
+    if (fechaDesde || fechaHasta) {
+      result = result.filter((r) => {
+        const d = parseMDY(r.fecha_creacion);
+        if (!d) return false;
+        if (fechaDesde && d < fechaDesde) return false;
+        if (fechaHasta) {
+          const hasta = new Date(fechaHasta);
+          hasta.setHours(23, 59, 59, 999);
+          if (d > hasta) return false;
+        }
+        return true;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -47,7 +103,7 @@ const DataTable = ({ data }: DataTableProps) => {
       );
     }
     return result;
-  }, [data, transportadora, marca, estado, ciudad, search]);
+  }, [data, estado, marca, estrella, transportadora, producto, fechaDesde, fechaHasta, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -55,48 +111,75 @@ const DataTable = ({ data }: DataTableProps) => {
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
+  const FilterSelect = ({ value, onChange, placeholder, options, defaultLabel }: {
+    value: string; onChange: (v: string) => void; placeholder: string; options: string[]; defaultLabel: string;
+  }) => (
+    <Select value={value} onValueChange={(v) => { onChange(v); setPage(0); }}>
+      <SelectTrigger className="h-8 w-[140px] bg-background text-xs">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{defaultLabel}</SelectItem>
+        {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+
+  const DateFilter = ({ label, value, onChange }: { label: string; value: Date | undefined; onChange: (d: Date | undefined) => void }) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn("h-8 w-[130px] justify-start text-left text-xs font-normal", !value && "text-muted-foreground")}
+        >
+          <CalendarIcon className="mr-1.5 h-3 w-3" />
+          {value ? format(value, "d/M/yyyy") : label}
+          {value && (
+            <X
+              className="ml-auto h-3 w-3 opacity-60 hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); onChange(undefined); setPage(0); }}
+            />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value}
+          onSelect={(d) => { onChange(d); setPage(0); }}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <h2 className="text-lg font-semibold">Tabla Maestra de Pedidos</h2>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Tabla Maestra de Pedidos</h2>
+          <div className="relative ml-auto">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="h-9 w-[180px] bg-background pl-8 text-sm"
+              className="h-8 w-[180px] bg-background pl-8 text-xs"
             />
           </div>
-          <Select value={transportadora} onValueChange={(v) => { setTransportadora(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[150px] bg-background text-sm"><SelectValue placeholder="Transportadora" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {transportadoras.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={marca} onValueChange={(v) => { setMarca(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[130px] bg-background text-sm"><SelectValue placeholder="Marca" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {marcas.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={ciudad} onValueChange={(v) => { setCiudad(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[140px] bg-background text-sm"><SelectValue placeholder="Ciudad" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {ciudades.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={estado} onValueChange={(v) => { setEstado(v); setPage(0); }}>
-            <SelectTrigger className="h-9 w-[150px] bg-background text-sm"><SelectValue placeholder="Estado" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {estados.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterSelect value={estado} onChange={setEstado} placeholder="Estado" options={estados} defaultLabel="Todos los estados" />
+          <FilterSelect value={marca} onChange={setMarca} placeholder="Marca" options={marcas} defaultLabel="Todas las marcas" />
+          <FilterSelect value={estrella} onChange={setEstrella} placeholder="Estrella" options={estrellas} defaultLabel="Todas las estrellas" />
+          <FilterSelect value={transportadora} onChange={setTransportadora} placeholder="Transportadora" options={transportadoras} defaultLabel="Todas" />
+          <FilterSelect value={producto} onChange={setProducto} placeholder="Producto" options={productos} defaultLabel="Todos los productos" />
+          <div className="flex items-center gap-1.5">
+            <DateFilter label="Desde" value={fechaDesde} onChange={setFechaDesde} />
+            <span className="text-xs text-muted-foreground">—</span>
+            <DateFilter label="Hasta" value={fechaHasta} onChange={setFechaHasta} />
+          </div>
         </div>
       </div>
 
@@ -164,7 +247,7 @@ const DataTable = ({ data }: DataTableProps) => {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{row.fecha_creacion}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{row.hora_col}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{formatHora(row.hora_col)}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">{row.cliente}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{row.client_email}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{row.client_phone}</TableCell>
