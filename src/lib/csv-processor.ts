@@ -195,8 +195,9 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
   const marcasUnicas = new Set(activeRows.map((r) => r.marca).filter(Boolean)).size;
   const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre).filter(Boolean)).size;
 
-  // --- HOY: 3/3/2026 (M/D/YYYY format matching Fecha_sin_hora_UTC) ---
-  const today = "3/3/2026";
+  // --- HOY: dynamic M/D/YYYY format matching Fecha_sin_hora_UTC ---
+  const now = new Date();
+  const today = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
   const todayActive = activeRows.filter((r) => r.fecha_creacion_dia === today);
   const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
   const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);

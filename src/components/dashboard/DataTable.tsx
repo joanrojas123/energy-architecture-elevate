@@ -18,18 +18,21 @@ const PAGE_SIZE = 25;
 const DataTable = ({ data }: DataTableProps) => {
   const [transportadora, setTransportadora] = useState("all");
   const [marca, setMarca] = useState("all");
+  const [estado, setEstado] = useState("all");
   const [ciudad, setCiudad] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
 
   const transportadoras = useMemo(() => getUniqueValues(data, "shipping_company"), [data]);
   const marcas = useMemo(() => getUniqueValues(data, "marca"), [data]);
+  const estados = useMemo(() => getUniqueValues(data, "estado_actual"), [data]);
   const ciudades = useMemo(() => getUniqueValues(data, "ciudad"), [data]);
 
   const filtered = useMemo(() => {
     let result = data;
     if (transportadora !== "all") result = result.filter((r) => r.shipping_company === transportadora);
     if (marca !== "all") result = result.filter((r) => r.marca === marca);
+    if (estado !== "all") result = result.filter((r) => r.estado_actual === estado);
     if (ciudad !== "all") result = result.filter((r) => r.ciudad === ciudad);
     if (search) {
       const q = search.toLowerCase();
@@ -44,7 +47,7 @@ const DataTable = ({ data }: DataTableProps) => {
       );
     }
     return result;
-  }, [data, transportadora, marca, ciudad, search]);
+  }, [data, transportadora, marca, estado, ciudad, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -85,6 +88,13 @@ const DataTable = ({ data }: DataTableProps) => {
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               {ciudades.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={estado} onValueChange={(v) => { setEstado(v); setPage(0); }}>
+            <SelectTrigger className="h-9 w-[150px] bg-background text-sm"><SelectValue placeholder="Estado" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {estados.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
