@@ -3,6 +3,8 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import KPICards from "@/components/dashboard/KPICards";
 import DataTable from "@/components/dashboard/DataTable";
 import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
+import TrendsSection from "@/components/dashboard/TrendsSection";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   fetchVentas,
   calculateMetrics,
@@ -93,11 +95,22 @@ const Index = () => {
             </div>
           </div>
         ) : (
-          <>
-            <KPICards metrics={metrics} />
-            <AnalyticsSection data={filteredData} />
-            <DataTable data={filteredData} />
-          </>
+          <Tabs defaultValue="resumen" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="resumen">Resumen</TabsTrigger>
+              <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="resumen" className="space-y-6">
+              <KPICards metrics={metrics} />
+              <AnalyticsSection data={filteredData} />
+              <DataTable data={filteredData} />
+            </TabsContent>
+
+            <TabsContent value="tendencias">
+              <TrendsSection data={rawData} />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

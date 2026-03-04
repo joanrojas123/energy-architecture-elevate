@@ -40,6 +40,9 @@
     --success-foreground: 0 0% 100%;
     --process: 217 91% 60%;
     --process-foreground: 0 0% 100%;
+    --chart-purple: 262 83% 58%;
+    --chart-purple-foreground: 0 0% 100%;
+    --chart-green: 160 84% 39%;
     --pending: 38 92% 50%;
     --pending-foreground: 0 0% 100%;
     --error: 0 84% 60%;
