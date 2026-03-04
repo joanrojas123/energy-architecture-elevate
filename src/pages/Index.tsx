@@ -1,37 +1,44 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import KPICards from "@/components/dashboard/KPICards";
 import DataTable from "@/components/dashboard/DataTable";
 import {
-  parseCSV,
+  fetchVentas,
   calculateMetrics,
   getUniqueMeses,
   type SalesRow,
   type DashboardMetrics,
 } from "@/lib/csv-processor";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Loader2 } from "lucide-react";
 
 const EMPTY_METRICS: DashboardMetrics = {
-  totalOrdenes: 0,
-  totalUnidades: 0,
-  totalRevenue: 0,
-  tasaExito: 0,
-  aov: 0,
-  upo: 0,
-  enTransito: 0,
-  pendientes: 0,
-  totalEntregadas: 0,
-  canceladasRechazadas: 0,
-  marcasUnicas: 0,
-  estrellasUnicas: 0,
-  semCrecimiento: 0,
-  diaOrdenesHoy: 0,
-  diaRevenueHoy: 0,
+  totalOrdenes: 0, totalUnidades: 0, totalRevenue: 0, tasaExito: 0,
+  aov: 0, upo: 0, enTransito: 0, pendientes: 0, totalEntregadas: 0,
+  canceladasRechazadas: 0, marcasUnicas: 0, estrellasUnicas: 0,
+  semCrecimiento: 0, diaOrdenesHoy: 0, diaRevenueHoy: 0,
 };
 
 const Index = () => {
   const [rawData, setRawData] = useState<SalesRow[]>([]);
   const [selectedMes, setSelectedMes] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await fetchVentas();
+      setRawData(rows);
+    } catch (err: any) {
+      console.error("Error fetching Ventas:", err);
+      setError(err.message || "Error al cargar datos");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const meses = useMemo(() => getUniqueMeses(rawData), [rawData]);
 
@@ -45,16 +52,6 @@ const Index = () => {
     [filteredData]
   );
 
-  const handleFileUpload = useCallback(async (file: File) => {
-    try {
-      const rows = await parseCSV(file);
-      setRawData(rows);
-      setSelectedMes("all");
-    } catch (err) {
-      console.error("Error parsing CSV:", err);
-    }
-  }, []);
-
   const hasData = rawData.length > 0;
 
   return (
@@ -66,18 +63,32 @@ const Index = () => {
         semCrecimiento={metrics.semCrecimiento}
         diaOrdenesHoy={metrics.diaOrdenesHoy}
         diaRevenueHoy={metrics.diaRevenueHoy}
-        onFileUpload={handleFileUpload}
+        onRefresh={loadData}
         hasData={hasData}
+        loading={loading}
       />
 
       <div className="mx-auto max-w-[1440px] space-y-6 p-6">
-        {!hasData ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-32">
+            <Loader2 className="h-12 w-12 animate-spin text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">Cargando datos desde Supabase…</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-destructive/30 py-32">
+            <FileSpreadsheet className="h-16 w-16 text-destructive/40" />
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-foreground">Error al cargar datos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            </div>
+          </div>
+        ) : !hasData ? (
           <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border py-32">
             <FileSpreadsheet className="h-16 w-16 text-muted-foreground/40" />
             <div className="text-center">
-              <h2 className="text-lg font-semibold text-foreground">Carga tu archivo CSV de ventas</h2>
+              <h2 className="text-lg font-semibold text-foreground">No hay datos en la tabla Ventas</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Usa el botón superior para subir tu archivo y visualizar los KPIs en tiempo real.
+                Verifica que la tabla "Ventas" tenga registros en Supabase.
               </p>
             </div>
           </div>

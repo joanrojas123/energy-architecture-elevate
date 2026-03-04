@@ -1,5 +1,4 @@
-import { useRef } from "react";
-import { Upload, TrendingUp, TrendingDown, Calendar, BarChart3, DollarSign } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Calendar, BarChart3, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -12,8 +11,9 @@ interface DashboardHeaderProps {
   semCrecimiento: number;
   diaOrdenesHoy: number;
   diaRevenueHoy: number;
-  onFileUpload: (file: File) => void;
+  onRefresh: () => void;
   hasData: boolean;
+  loading: boolean;
 }
 
 const fmt = (n: number) =>
@@ -21,10 +21,8 @@ const fmt = (n: number) =>
 
 const DashboardHeader = ({
   meses, selectedMes, onMesChange, semCrecimiento,
-  diaOrdenesHoy, diaRevenueHoy, onFileUpload, hasData,
+  diaOrdenesHoy, diaRevenueHoy, onRefresh, hasData, loading,
 }: DashboardHeaderProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   return (
     <header className="border-b border-border bg-card px-6 py-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -78,23 +76,13 @@ const DashboardHeader = ({
             </>
           )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onFileUpload(file);
-              e.target.value = "";
-            }}
-          />
           <Button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={onRefresh}
+            disabled={loading}
             className="gap-2 bg-process text-process-foreground hover:bg-process/90"
           >
-            <Upload className="h-4 w-4" />
-            Cargar CSV de Ventas
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Cargando…" : "🔄 Actualizar"}
           </Button>
         </div>
       </div>
