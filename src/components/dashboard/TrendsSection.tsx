@@ -167,16 +167,28 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
     }));
   }, [active]);
 
+  const ESTADOS_EN_TRANSITO = [
+    "despachada", "en bodega destino", "en bodega origen", "en transito",
+    "novedad", "en reparto", "preparado para transportadora", "en reexpedicion",
+    "en espera de ruta domestica", "en ruta", "en bodega principal",
+    "en camino", "en espera de rx", "sin movimientos",
+  ];
+
+  const [logMes, setLogMes] = useState("all");
+
   /* ── Logística data ── */
   const logisticaData = useMemo(() => {
-    const transportMap: Record<string, { orders: Set<string>; entregadas: Set<string> }> = {};
+    const src = logMes === "all" ? data : data.filter((r) => r.mes_id === logMes);
+    const transportMap: Record<string, { orders: Set<string>; entregadas: Set<string>; enTransito: Set<string>; canceladas: Set<string> }> = {};
     const cityMap: Record<string, { orders: Set<string>; revenue: number }> = {};
-    for (const r of data) {
-      // All rows for logistics
+    for (const r of src) {
       if (r.shipping_company) {
-        if (!transportMap[r.shipping_company]) transportMap[r.shipping_company] = { orders: new Set(), entregadas: new Set() };
+        if (!transportMap[r.shipping_company]) transportMap[r.shipping_company] = { orders: new Set(), entregadas: new Set(), enTransito: new Set(), canceladas: new Set() };
         transportMap[r.shipping_company].orders.add(r.order_id);
-        if (normalize(r.estado_actual) === "entregado") transportMap[r.shipping_company].entregadas.add(r.order_id);
+        const st = normalize(r.estado_actual);
+        if (st === "entregado") transportMap[r.shipping_company].entregadas.add(r.order_id);
+        if (ESTADOS_EN_TRANSITO.includes(st)) transportMap[r.shipping_company].enTransito.add(r.order_id);
+        if (ESTADOS_EXCLUIDOS.includes(st)) transportMap[r.shipping_company].canceladas.add(r.order_id);
       }
       if (r.ciudad && !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual))) {
         if (!cityMap[r.ciudad]) cityMap[r.ciudad] = { orders: new Set(), revenue: 0 };
@@ -184,17 +196,21 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
         cityMap[r.ciudad].revenue += r.pvp_total * r.unidades;
       }
     }
-    const transportadoras = Object.entries(transportMap).map(([name, v]) => ({
-      name, orders: v.orders.size, entregadas: v.entregadas.size,
-      tasaExito: v.orders.size > 0 ? (v.entregadas.size / v.orders.size) * 100 : 0,
-    }));
+    const transportadoras = Object.entries(transportMap).map(([name, v]) => {
+      const base = v.orders.size - v.canceladas.size;
+      return {
+        name, orders: v.orders.size, entregadas: v.entregadas.size,
+        enTransito: v.enTransito.size, canceladas: v.canceladas.size,
+        tasaExito: base > 0 ? (v.entregadas.size / base) * 100 : 0,
+      };
+    });
     const cities = Object.entries(cityMap)
       .map(([name, v]) => ({ name, orders: v.orders.size, revenue: v.revenue }))
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 15);
     const maxCityOrders = Math.max(...cities.map(c => c.orders), 1);
     return { transportadoras, cities, maxCityOrders };
-  }, [data]);
+  }, [data, logMes]);
 
   const brandSort = useSortable(brandTable, "revenue");
   const starSort = useSortable(starTable, "revenue");
@@ -429,6 +445,16 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
           <SectionHeader title="Transportadoras" />
           <Card>
             <CardContent className="px-3 py-3">
+              <div className="mb-3 flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Mes:</span>
+                <Select value={logMes} onValueChange={setLogMes}>
+                  <SelectTrigger className="h-7 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {meses.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -436,6 +462,8 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
                       <th className="pb-1.5 text-left font-medium text-muted-foreground cursor-pointer" onClick={() => transportSort.toggle("name")}>Transportadora</th>
                       <SortHeader label="Órdenes" active={transportSort.sortKey === "orders"} dir={transportSort.sortDir} onClick={() => transportSort.toggle("orders")} />
                       <SortHeader label="Entregadas" active={transportSort.sortKey === "entregadas"} dir={transportSort.sortDir} onClick={() => transportSort.toggle("entregadas")} />
+                      <SortHeader label="En Tránsito" active={transportSort.sortKey === "enTransito"} dir={transportSort.sortDir} onClick={() => transportSort.toggle("enTransito")} />
+                      <SortHeader label="Canceladas" active={transportSort.sortKey === "canceladas"} dir={transportSort.sortDir} onClick={() => transportSort.toggle("canceladas")} />
                       <SortHeader label="Tasa Éxito %" active={transportSort.sortKey === "tasaExito"} dir={transportSort.sortDir} onClick={() => transportSort.toggle("tasaExito")} />
                     </tr>
                   </thead>
@@ -444,7 +472,9 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
                       <tr key={r.name} className="border-b border-border/50 last:border-0">
                         <td className="py-1.5 text-foreground">{r.name}</td>
                         <td className="py-1.5 text-right font-medium text-foreground">{r.orders.toLocaleString()}</td>
-                        <td className="py-1.5 text-right font-medium text-foreground">{r.entregadas.toLocaleString()}</td>
+                        <td className="py-1.5 text-right font-medium text-success">{r.entregadas.toLocaleString()}</td>
+                        <td className="py-1.5 text-right font-medium text-info">{r.enTransito.toLocaleString()}</td>
+                        <td className="py-1.5 text-right font-medium text-destructive">{r.canceladas.toLocaleString()}</td>
                         <td className="py-1.5 text-right font-medium text-foreground">{r.tasaExito.toFixed(1)}%</td>
                       </tr>
                     ))}
