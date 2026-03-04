@@ -1,6 +1,6 @@
 import {
-  DollarSign, ShoppingCart, TrendingUp, Package, CheckCircle, Truck,
-  Clock, XCircle, Tag, Star, Percent,
+  DollarSign, ShoppingCart, TrendingUp, TrendingDown, Package, CheckCircle, Truck,
+  Clock, XCircle, Tag, Star, Percent, Calendar, BarChart3,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { DashboardMetrics } from "@/lib/csv-processor";
@@ -20,6 +20,8 @@ interface CardDef {
   icon: React.ElementType;
   color: string;
   bgColor: string;
+  subtitle?: string;
+  subtitleColor?: string;
 }
 
 const KPICards = ({ metrics }: KPICardsProps) => {
@@ -44,10 +46,46 @@ const KPICards = ({ metrics }: KPICardsProps) => {
     { label: "Canceladas / Rechazadas", value: num(metrics.canceladasRechazadas), icon: XCircle, color: "text-error", bgColor: "bg-error/10" },
   ];
 
+  const hoy: CardDef[] = [
+    { label: "Órdenes HOY", value: num(metrics.diaOrdenesHoy), icon: Calendar, color: "text-process", bgColor: "bg-process/10" },
+    { label: "Revenue HOY", value: fmt(metrics.diaRevenueHoy), icon: DollarSign, color: "text-success", bgColor: "bg-success/10" },
+  ];
+
+  const ordCrecStr = metrics.semOrdenesCrecimiento >= 0
+    ? `+${metrics.semOrdenesCrecimiento.toFixed(1)}%` : `${metrics.semOrdenesCrecimiento.toFixed(1)}%`;
+  const revCrecStr = metrics.semRevenueCrecimiento >= 0
+    ? `+${metrics.semRevenueCrecimiento.toFixed(1)}%` : `${metrics.semRevenueCrecimiento.toFixed(1)}%`;
+
+  const wow: CardDef[] = [
+    {
+      label: "Órdenes Sem. Actual",
+      value: num(metrics.semOrdenesActual),
+      icon: metrics.semOrdenesCrecimiento >= 0 ? TrendingUp : TrendingDown,
+      color: metrics.semOrdenesCrecimiento >= 0 ? "text-success" : "text-error",
+      bgColor: metrics.semOrdenesCrecimiento >= 0 ? "bg-success/10" : "bg-error/10",
+      subtitle: `vs ${num(metrics.semOrdenesAnterior)} anterior (${ordCrecStr})`,
+      subtitleColor: metrics.semOrdenesCrecimiento >= 0 ? "text-success" : "text-error",
+    },
+    {
+      label: "Revenue Sem. Actual",
+      value: fmt(metrics.semRevenueActual),
+      icon: metrics.semRevenueCrecimiento >= 0 ? TrendingUp : TrendingDown,
+      color: metrics.semRevenueCrecimiento >= 0 ? "text-success" : "text-error",
+      bgColor: metrics.semRevenueCrecimiento >= 0 ? "bg-success/10" : "bg-error/10",
+      subtitle: `vs ${fmt(metrics.semRevenueAnterior)} anterior (${revCrecStr})`,
+      subtitleColor: metrics.semRevenueCrecimiento >= 0 ? "text-success" : "text-error",
+    },
+  ];
+
   const renderRow = (title: string, cards: CardDef[]) => (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
-      <div className={`grid gap-3 ${cards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : cards.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+      <div className={`grid gap-3 ${
+        cards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" :
+        cards.length === 4 ? "grid-cols-2 sm:grid-cols-4" :
+        cards.length === 3 ? "grid-cols-1 sm:grid-cols-3" :
+        "grid-cols-1 sm:grid-cols-2"
+      }`}>
         {cards.map((card) => (
           <Card key={card.label} className="border border-border shadow-sm">
             <CardContent className="p-4">
@@ -55,6 +93,11 @@ const KPICards = ({ metrics }: KPICardsProps) => {
                 <div className="space-y-0.5">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{card.label}</p>
                   <p className="text-xl font-bold tracking-tight">{card.value}</p>
+                  {card.subtitle && (
+                    <p className={`text-[11px] font-medium ${card.subtitleColor || "text-muted-foreground"}`}>
+                      {card.subtitle}
+                    </p>
+                  )}
                 </div>
                 <div className={`rounded-lg p-2 ${card.bgColor}`}>
                   <card.icon className={`h-4 w-4 ${card.color}`} />
@@ -72,6 +115,8 @@ const KPICards = ({ metrics }: KPICardsProps) => {
       {renderRow("Principales", principales)}
       {renderRow("Salud del Negocio", salud)}
       {renderRow("Pipeline Logístico", pipeline)}
+      {renderRow("Hoy — 2026-03-03", hoy)}
+      {renderRow("WoW — Semana vs Semana", wow)}
     </div>
   );
 };
