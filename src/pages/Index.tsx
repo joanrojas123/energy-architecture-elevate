@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import KPICards from "@/components/dashboard/KPICards";
 import DataTable from "@/components/dashboard/DataTable";
+import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import {
   fetchVentas,
   calculateMetrics,
@@ -94,6 +95,7 @@ const Index = () => {
         ) : (
           <>
             <KPICards metrics={metrics} />
+            <AnalyticsSection data={filteredData} />
             <DataTable data={filteredData} />
           </>
         )}
