@@ -34,9 +34,14 @@ export interface DashboardMetrics {
   canceladasRechazadas: number;
   marcasUnicas: number;
   estrellasUnicas: number;
-  semCrecimiento: number;
   diaOrdenesHoy: number;
   diaRevenueHoy: number;
+  semOrdenesActual: number;
+  semOrdenesAnterior: number;
+  semOrdenesCrecimiento: number;
+  semRevenueActual: number;
+  semRevenueAnterior: number;
+  semRevenueCrecimiento: number;
 }
 
 const ESTADOS_EXCLUIDOS = ["cancelado", "rechazado"];
@@ -123,22 +128,21 @@ export async function fetchVentas(): Promise<SalesRow[]> {
 }
 
 export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
-  const allUniqueOrders = new Set(rows.map((r) => r.order_id));
-  const totalOrdenes = allUniqueOrders.size;
-
   const activeRows = rows.filter((r) => !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)));
+
+  // Total Órdenes: DISTINCT order_id excluding cancelado/rechazado
+  const activeOrderIds = new Set(activeRows.map((r) => r.order_id));
+  const totalOrdenes = activeOrderIds.size;
+
+  // Total Unidades: SUM product_quantity excluding cancelado/rechazado
   const totalUnidades = activeRows.reduce((sum, r) => sum + r.unidades, 0);
 
-  const seenOrders = new Map<string, number>();
-  for (const r of activeRows) {
-    if (!seenOrders.has(r.order_id)) {
-      seenOrders.set(r.order_id, r.pvp_total);
-    }
-  }
-  const totalRevenue = Array.from(seenOrders.values()).reduce((sum, pvp) => sum + pvp, 0);
+  // Revenue PVP: SUM(pvp_total × unidades) excluding cancelado/rechazado
+  const totalRevenue = activeRows.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
 
+  // Tasa de Éxito: entregado orders / total active orders
   const entregadoOrders = new Set(
-    rows.filter((r) => normalize(r.estado_actual) === "entregado").map((r) => r.order_id)
+    activeRows.filter((r) => normalize(r.estado_actual) === "entregado").map((r) => r.order_id)
   );
   const tasaExito = totalOrdenes > 0 ? (entregadoOrders.size / totalOrdenes) * 100 : 0;
 
@@ -156,42 +160,38 @@ export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
     rows.filter((r) => ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual))).map((r) => r.order_id)
   ).size;
 
-  const marcasUnicas = new Set(rows.map((r) => r.marca).filter(Boolean)).size;
-  const estrellasUnicas = new Set(rows.map((r) => r.estrella_nombre).filter(Boolean)).size;
+  const marcasUnicas = new Set(activeRows.map((r) => r.marca).filter(Boolean)).size;
+  const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre).filter(Boolean)).size;
 
-  // WoW growth
-  const weekMap = new Map<number, Set<string>>();
-  for (const r of rows) {
-    if (r.semana_del_anio > 0) {
-      if (!weekMap.has(r.semana_del_anio)) weekMap.set(r.semana_del_anio, new Set());
-      weekMap.get(r.semana_del_anio)!.add(r.order_id);
-    }
-  }
-  let semCrecimiento = 0;
-  const weekNums = [...weekMap.keys()].sort((a, b) => a - b);
-  if (weekNums.length >= 2) {
-    const last = weekMap.get(weekNums[weekNums.length - 1])!.size;
-    const prev = weekMap.get(weekNums[weekNums.length - 2])!.size;
-    semCrecimiento = prev > 0 ? ((last - prev) / prev) * 100 : 0;
-  }
-
-  // DIA: today = 2026-03-03
+  // --- HOY: 2026-03-03 ---
   const today = "2026-03-03";
-  const todayRows = rows.filter((r) => r.fecha_creacion_dia.includes(today));
-  const todayOrderIds = new Set(todayRows.map((r) => r.order_id));
-  const diaOrdenesHoy = todayOrderIds.size;
+  const todayActive = activeRows.filter((r) => r.fecha_creacion_dia.includes(today));
+  const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
+  const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
 
-  const todayActive = todayRows.filter((r) => !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)));
-  const seenToday = new Map<string, number>();
-  for (const r of todayActive) {
-    if (!seenToday.has(r.order_id)) seenToday.set(r.order_id, r.pvp_total);
-  }
-  const diaRevenueHoy = Array.from(seenToday.values()).reduce((sum, v) => sum + v, 0);
+  // --- WoW: semana ISO de hoy (2026-03-03 = semana 10) vs semana 9 ---
+  const currentWeek = 10; // ISO week for 2026-03-03
+  const prevWeek = currentWeek - 1;
+
+  const weekActiveRows = (wk: number) =>
+    activeRows.filter((r) => r.semana_del_anio === wk);
+
+  const semOrdenesActual = new Set(weekActiveRows(currentWeek).map((r) => r.order_id)).size;
+  const semOrdenesAnterior = new Set(weekActiveRows(prevWeek).map((r) => r.order_id)).size;
+  const semOrdenesCrecimiento = semOrdenesAnterior > 0
+    ? ((semOrdenesActual - semOrdenesAnterior) / semOrdenesAnterior) * 100 : 0;
+
+  const semRevenueActual = weekActiveRows(currentWeek).reduce((s, r) => s + r.pvp_total * r.unidades, 0);
+  const semRevenueAnterior = weekActiveRows(prevWeek).reduce((s, r) => s + r.pvp_total * r.unidades, 0);
+  const semRevenueCrecimiento = semRevenueAnterior > 0
+    ? ((semRevenueActual - semRevenueAnterior) / semRevenueAnterior) * 100 : 0;
 
   return {
     totalOrdenes, totalUnidades, totalRevenue, tasaExito, aov, upo,
     enTransito, pendientes, totalEntregadas, canceladasRechazadas,
-    marcasUnicas, estrellasUnicas, semCrecimiento, diaOrdenesHoy, diaRevenueHoy,
+    marcasUnicas, estrellasUnicas, diaOrdenesHoy, diaRevenueHoy,
+    semOrdenesActual, semOrdenesAnterior, semOrdenesCrecimiento,
+    semRevenueActual, semRevenueAnterior, semRevenueCrecimiento,
   };
 }
 

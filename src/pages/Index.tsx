@@ -15,12 +15,14 @@ const EMPTY_METRICS: DashboardMetrics = {
   totalOrdenes: 0, totalUnidades: 0, totalRevenue: 0, tasaExito: 0,
   aov: 0, upo: 0, enTransito: 0, pendientes: 0, totalEntregadas: 0,
   canceladasRechazadas: 0, marcasUnicas: 0, estrellasUnicas: 0,
-  semCrecimiento: 0, diaOrdenesHoy: 0, diaRevenueHoy: 0,
+  diaOrdenesHoy: 0, diaRevenueHoy: 0,
+  semOrdenesActual: 0, semOrdenesAnterior: 0, semOrdenesCrecimiento: 0,
+  semRevenueActual: 0, semRevenueAnterior: 0, semRevenueCrecimiento: 0,
 };
 
 const Index = () => {
   const [rawData, setRawData] = useState<SalesRow[]>([]);
-  const [selectedMes, setSelectedMes] = useState("all");
+  const [selectedMes, setSelectedMes] = useState("2026-03");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,9 +62,6 @@ const Index = () => {
         meses={meses}
         selectedMes={selectedMes}
         onMesChange={setSelectedMes}
-        semCrecimiento={metrics.semCrecimiento}
-        diaOrdenesHoy={metrics.diaOrdenesHoy}
-        diaRevenueHoy={metrics.diaRevenueHoy}
         onRefresh={loadData}
         hasData={hasData}
         loading={loading}
