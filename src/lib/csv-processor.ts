@@ -99,9 +99,7 @@ export async function fetchVentas(): Promise<SalesRow[]> {
     seen.add(dedupKey);
 
     const fecha = (raw.Fecha_sin_hora_UTC || "").toString().trim();
-    // Extract mes_id as YYYY-MM from fecha
-    const mesMatch = fecha.match(/^(\d{4}-\d{2})/);
-    const mes_id = mesMatch ? mesMatch[1] : "";
+    const mes_id = (raw.period || "").toString().trim();
 
     rows.push({
       order_id,
@@ -127,7 +125,7 @@ export async function fetchVentas(): Promise<SalesRow[]> {
   return rows;
 }
 
-export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
+export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): DashboardMetrics {
   const activeRows = rows.filter((r) => !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)));
 
   // Total Órdenes: DISTINCT order_id excluding cancelado/rechazado
@@ -163,26 +161,35 @@ export function calculateMetrics(rows: SalesRow[]): DashboardMetrics {
   const marcasUnicas = new Set(activeRows.map((r) => r.marca).filter(Boolean)).size;
   const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre).filter(Boolean)).size;
 
-  // --- HOY: 2026-03-03 ---
-  const today = "2026-03-03";
-  const todayActive = activeRows.filter((r) => r.fecha_creacion_dia.includes(today));
+  // --- HOY: 3/3/2026 (M/D/YYYY format matching Fecha_sin_hora_UTC) ---
+  const today = "3/3/2026";
+  const todayActive = activeRows.filter((r) => r.fecha_creacion_dia === today);
   const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
   const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
 
-  // --- WoW: semana ISO de hoy (2026-03-03 = semana 10) vs semana 9 ---
-  const currentWeek = 10; // ISO week for 2026-03-03
-  const prevWeek = currentWeek - 1;
+  // --- WoW uses ALL rows to compare across months ---
+  const wowSource = allRows || rows;
+  const currentWeek = 10;
+  const prevWeek = 9;
 
-  const weekActiveRows = (wk: number) =>
-    activeRows.filter((r) => r.semana_del_anio === wk);
+  // WoW uses ALL rows (not just filtered by month), filtering by period+week
+  const weekActiveRows = (wk: number, period: string) =>
+    wowSource.filter((r) =>
+      !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)) &&
+      r.semana_del_anio === wk &&
+      r.mes_id === period
+    );
 
-  const semOrdenesActual = new Set(weekActiveRows(currentWeek).map((r) => r.order_id)).size;
-  const semOrdenesAnterior = new Set(weekActiveRows(prevWeek).map((r) => r.order_id)).size;
+  const currentWeekRows = weekActiveRows(currentWeek, "2026-03");
+  const prevWeekRows = weekActiveRows(prevWeek, "2026-02");
+
+  const semOrdenesActual = new Set(currentWeekRows.map((r) => r.order_id)).size;
+  const semOrdenesAnterior = new Set(prevWeekRows.map((r) => r.order_id)).size;
   const semOrdenesCrecimiento = semOrdenesAnterior > 0
     ? ((semOrdenesActual - semOrdenesAnterior) / semOrdenesAnterior) * 100 : 0;
 
-  const semRevenueActual = weekActiveRows(currentWeek).reduce((s, r) => s + r.pvp_total * r.unidades, 0);
-  const semRevenueAnterior = weekActiveRows(prevWeek).reduce((s, r) => s + r.pvp_total * r.unidades, 0);
+  const semRevenueActual = currentWeekRows.reduce((s, r) => s + r.pvp_total * r.unidades, 0);
+  const semRevenueAnterior = prevWeekRows.reduce((s, r) => s + r.pvp_total * r.unidades, 0);
   const semRevenueCrecimiento = semRevenueAnterior > 0
     ? ((semRevenueActual - semRevenueAnterior) / semRevenueAnterior) * 100 : 0;
 
