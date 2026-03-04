@@ -18,6 +18,22 @@ export interface SalesRow {
   margen_neto: number;
   categoria: string;
   cliente: string;
+  externalid_dropi: string;
+  hora_col: string;
+  client_email: string;
+  client_phone: string;
+  state: string;
+  shipping_company: string;
+  shipping_guide: string;
+  variation_attributes: string;
+  variation_costo: number;
+  product_cost_provider: number;
+  provider_name: string;
+  estrella_type: string;
+  estrella_city: string;
+  estrella_status: string;
+  estrella_inactivity_segment: string;
+  rate_type: string;
   [key: string]: string | number;
 }
 
@@ -101,24 +117,42 @@ export async function fetchVentas(): Promise<SalesRow[]> {
     const fecha = (raw.Fecha_sin_hora_UTC || "").toString().trim();
     const mes_id = (raw.period || "").toString().trim();
 
+    const str = (v: any) => (v || "").toString().trim();
+
     rows.push({
       order_id,
       producto,
       unidades: parseFloat(raw.product_quantity) || 0,
       pvp_total: parseFloat(raw.variation_PVPconIVA) || 0,
-      estado_actual: (raw.order_final_status || "").toString().trim(),
-      transportadora: "",
-      marca: (raw.brand_name || "").toString().trim(),
-      estrella_nombre: (raw.estrella_full_name || "").toString().trim(),
-      ciudad: (raw.city || "").toString().trim(),
+      estado_actual: str(raw.order_final_status),
+      transportadora: str(raw.shippingCompany),
+      marca: str(raw.brand_name),
+      estrella_nombre: str(raw.estrella_full_name),
+      ciudad: str(raw.city),
       fecha_creacion: fecha,
       fecha_creacion_dia: fecha,
       mes_id,
       semana: "",
       semana_del_anio: parseInt(raw.semana_del_anio) || 0,
       margen_neto: parseFloat(raw.Margen_Neto_Operativo) || 0,
-      categoria: (raw.product_category_name || "").toString().trim(),
-      cliente: (raw.client_full_name || "").toString().trim(),
+      categoria: str(raw.product_category_name),
+      cliente: str(raw.client_full_name),
+      externalid_dropi: str(raw.Externalid_dropi),
+      hora_col: str(raw.HoraCOL_createdAt_utc5),
+      client_email: str(raw.clientEmail),
+      client_phone: str(raw.clientPhone),
+      state: str(raw.state),
+      shipping_company: str(raw.shippingCompany),
+      shipping_guide: str(raw.shippingGuide),
+      variation_attributes: str(raw.variation_attributes_summary),
+      variation_costo: parseFloat(raw.variation_costo_conIVA) || 0,
+      product_cost_provider: parseFloat(raw.product_cost_provider) || 0,
+      provider_name: str(raw.provider_name),
+      estrella_type: str(raw.estrella_type),
+      estrella_city: str(raw.estrella_city),
+      estrella_status: str(raw.estrella_status),
+      estrella_inactivity_segment: str(raw.estrella_inactivity_segment),
+      rate_type: str(raw.rateType),
     });
   }
 
