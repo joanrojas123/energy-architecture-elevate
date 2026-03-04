@@ -16,9 +16,9 @@ const DAY_LABELS: Record<string, string> = {
 };
 
 function parseMDY(dateStr: string): Date | null {
-  const parts = dateStr.split("/");
-  if (parts.length !== 3) return null;
-  return new Date(+parts[2], +parts[0] - 1, +parts[1]);
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 const formatCurrency = (n: number) =>
