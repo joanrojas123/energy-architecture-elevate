@@ -66,6 +66,10 @@ export default {
           DEFAULT: "hsl(var(--error))",
           foreground: "hsl(var(--error-foreground))",
         },
+        "chart-purple": {
+          DEFAULT: "hsl(var(--chart-purple))",
+          foreground: "hsl(var(--chart-purple-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
