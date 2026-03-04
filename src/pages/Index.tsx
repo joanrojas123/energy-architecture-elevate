@@ -5,6 +5,7 @@ import DataTable from "@/components/dashboard/DataTable";
 import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
 import GoalsSection from "@/components/dashboard/GoalsSection";
+import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   fetchVentas,
@@ -101,6 +102,7 @@ const Index = () => {
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
               <TabsTrigger value="metas">Metas</TabsTrigger>
+              <TabsTrigger value="logistica">Logística Avanzada</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resumen" className="space-y-6">
@@ -115,6 +117,10 @@ const Index = () => {
 
             <TabsContent value="metas">
               <GoalsSection data={rawData} selectedMes={selectedMes} />
+            </TabsContent>
+
+            <TabsContent value="logistica">
+              <LogisticaAvanzadaSection />
             </TabsContent>
           </Tabs>
         )}
