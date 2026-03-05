@@ -119,37 +119,29 @@ const PanoramaSection = ({ data }: PanoramaSectionProps) => {
     };
   }, [activeRows, data]);
 
-  // Revenue por semana — group by semana_del_anio, exclude cancelado/rechazado
   const weeklyRevenue = useMemo(() => {
     const map = new Map<number, number>();
-    data.forEach((r) => {
+    activeRows.forEach((r) => {
       if (!r.semana_del_anio || r.semana_del_anio <= 0) return;
-      if (EXCLUIDOS.includes(norm(r.estado_actual))) return;
-      const rev = r.pvp_total * (r.unidades || 1);
+      const rev = (r.pvp_total || 0) * (r.unidades || 1);
       map.set(r.semana_del_anio, (map.get(r.semana_del_anio) || 0) + rev);
     });
     return [...map.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([week, revenue]) => ({ week: `Sem ${week}`, revenue }));
-  }, [data]);
+  }, [activeRows]);
 
-  // Heatmap data — parse Fecha_sin_hora_UTC (M/D/YYYY) properly
   const heatmapData = useMemo(() => {
     const weekSet = new Set<number>();
     const cellMap = new Map<string, Set<string>>();
-
     activeRows.forEach((r) => {
-      const fechaStr = r.fecha_creacion;
+      const fechaStr = (r as any).Fecha_sin_hora_UTC || r.fecha_creacion;
       if (!fechaStr) return;
-      const parts = fechaStr.split("/");
+      const parts = fechaStr.split('/');
       if (parts.length < 3) return;
-      const d = new Date(
-        parseInt(parts[2]),
-        parseInt(parts[0]) - 1,
-        parseInt(parts[1])
-      );
+      const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
       if (isNaN(d.getTime())) return;
-      const dow = d.getDay(); // 0=Dom
+      const dow = d.getDay();
       const dayIdx = DAY_MAP[dow];
       if (dayIdx === undefined) return;
       const semanaRelativa = Math.ceil(d.getDate() / 7);
@@ -158,9 +150,7 @@ const PanoramaSection = ({ data }: PanoramaSectionProps) => {
       if (!cellMap.has(key)) cellMap.set(key, new Set());
       cellMap.get(key)!.add(r.order_id);
     });
-
-    const weeks = [...weekSet].sort((a, b) => a - b);
-    return { weeks, cellMap };
+    return { weeks: [...weekSet].sort((a, b) => a - b), cellMap };
   }, [activeRows]);
 
   const heatColor = (count: number) => {
