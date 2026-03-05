@@ -3,19 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer,
 } from "recharts";
 import {
   DollarSign, ShoppingCart, TrendingUp, Activity, Percent, Users,
-  ArrowUpDown, X,
+  ArrowUpDown, X, CalendarIcon,
 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { SalesRow } from "@/lib/csv-processor";
 
 interface Props {
@@ -95,14 +99,23 @@ interface KPI {
 
 const PanoramaSection = ({ data, rawData }: Props) => {
   /* ── Filter state ── */
-  const [fMarca, setFMarca] = useState("all");
-  const [fProducto, setFProducto] = useState("all");
-  const [fEstrella, setFEstrella] = useState("all");
-  const [fSemana, setFSemana] = useState("all");
+  const [fMarcas, setFMarcas] = useState<string[]>([]);
+  const [fProductos, setFProductos] = useState<string[]>([]);
+  const [fEstrellas, setFEstrellas] = useState<string[]>([]);
+  const [fSemanas, setFSemanas] = useState<string[]>([]);
   const [fCliente, setFCliente] = useState("");
+  const [fDesde, setFDesde] = useState<Date | undefined>();
+  const [fHasta, setFHasta] = useState<Date | undefined>();
 
   const clearFilters = () => {
-    setFMarca("all"); setFProducto("all"); setFEstrella("all"); setFSemana("all"); setFCliente("");
+    setFMarcas([]); setFProductos([]); setFEstrellas([]); setFSemanas([]); setFCliente(""); setFDesde(undefined); setFHasta(undefined);
+  };
+
+  const parseFecha = (fecha: string): Date | null => {
+    if (!fecha) return null;
+    const parts = fecha.split('/');
+    if (parts.length !== 3) return null;
+    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
   };
 
   /* ── Unique values for dropdowns (from rawData) ── */
@@ -113,28 +126,37 @@ const PanoramaSection = ({ data, rawData }: Props) => {
     [rawData]
   );
   const uniqueSemanas = useMemo(() =>
-    [...new Set(rawData.map(r => r.semana_del_anio).filter(Boolean))].sort((a, b) => a - b),
+    [...new Set(rawData.map(r => r.semana_del_anio).filter(Boolean))].sort((a, b) => a - b).map(String),
     [rawData]
   );
 
-  const hasActiveFilters = fMarca !== "all" || fProducto !== "all" || fEstrella !== "all" || fSemana !== "all" || fCliente !== "";
+  const hasActiveFilters = fMarcas.length > 0 || fProductos.length > 0 || fEstrellas.length > 0 || fSemanas.length > 0 || fCliente !== "" || !!fDesde || !!fHasta;
 
   /* ── Apply filters to data (month-filtered) and rawData ── */
   const applyFilters = (rows: SalesRow[]) => {
     let f = rows;
-    if (fMarca !== "all") f = f.filter(r => r.marca === fMarca);
-    if (fProducto !== "all") f = f.filter(r => r.producto === fProducto);
-    if (fEstrella !== "all") f = f.filter(r => r.estrella_nombre === fEstrella);
-    if (fSemana !== "all") f = f.filter(r => r.semana_del_anio === Number(fSemana));
+    if (fMarcas.length > 0) f = f.filter(r => fMarcas.includes(r.marca));
+    if (fProductos.length > 0) f = f.filter(r => fProductos.includes(r.producto));
+    if (fEstrellas.length > 0) f = f.filter(r => fEstrellas.includes(r.estrella_nombre));
+    if (fSemanas.length > 0) f = f.filter(r => fSemanas.includes(String(r.semana_del_anio)));
     if (fCliente) {
       const q = norm(fCliente);
       f = f.filter(r => norm(r.cliente).includes(q));
     }
+    if (fDesde || fHasta) {
+      f = f.filter(r => {
+        const d = parseFecha(r.fecha_creacion);
+        if (!d) return false;
+        if (fDesde && d < fDesde) return false;
+        if (fHasta) { const end = new Date(fHasta); end.setHours(23, 59, 59, 999); if (d > end) return false; }
+        return true;
+      });
+    }
     return f;
   };
 
-  const filteredKPIData = useMemo(() => applyFilters(data), [data, fMarca, fProducto, fEstrella, fSemana, fCliente]);
-  const filteredRawData = useMemo(() => applyFilters(rawData), [rawData, fMarca, fProducto, fEstrella, fSemana, fCliente]);
+  const filteredKPIData = useMemo(() => applyFilters(data), [data, fMarcas, fProductos, fEstrellas, fSemanas, fCliente, fDesde, fHasta]);
+  const filteredRawData = useMemo(() => applyFilters(rawData), [rawData, fMarcas, fProductos, fEstrellas, fSemanas, fCliente, fDesde, fHasta]);
 
   /* ── Clean data helpers ── */
   const cleanActive = (rows: SalesRow[]) =>
@@ -317,61 +339,72 @@ const PanoramaSection = ({ data, rawData }: Props) => {
       {/* ── Filter row ── */}
       <Card className="border border-border">
         <CardContent className="px-3 py-3">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[140px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 items-end">
+            <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Marca</label>
-              <Select value={fMarca} onValueChange={setFMarca}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {uniqueMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MultiSelect options={uniqueMarcas} selected={fMarcas} onChange={setFMarcas} placeholder="Todas" />
             </div>
-            <div className="min-w-[160px]">
+            <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Producto</label>
-              <Select value={fProducto} onValueChange={setFProducto}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {uniqueProductos.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MultiSelect options={uniqueProductos} selected={fProductos} onChange={setFProductos} placeholder="Todos" />
             </div>
-            <div className="min-w-[140px]">
+            <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Estrella</label>
-              <Select value={fEstrella} onValueChange={setFEstrella}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {uniqueEstrellas.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MultiSelect options={uniqueEstrellas} selected={fEstrellas} onChange={setFEstrellas} placeholder="Todas" />
             </div>
-            <div className="min-w-[100px]">
+            <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Semana</label>
-              <Select value={fSemana} onValueChange={setFSemana}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {uniqueSemanas.map(s => <SelectItem key={s} value={String(s)}>S{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-w-[160px]">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Cliente</label>
-              <Input
-                value={fCliente}
-                onChange={e => setFCliente(e.target.value)}
-                placeholder="Buscar cliente…"
-                className="h-8 text-xs"
+              <MultiSelect
+                options={uniqueSemanas}
+                selected={fSemanas}
+                onChange={setFSemanas}
+                placeholder="Todas"
               />
             </div>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground">
-                <X className="h-3 w-3" /> Limpiar filtros
-              </Button>
-            )}
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Desde</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("h-8 w-full justify-start text-xs font-normal px-2", !fDesde && "text-muted-foreground")}>
+                    <CalendarIcon className="h-3 w-3 mr-1.5" />
+                    {fDesde ? format(fDesde, "dd/MM/yyyy") : "Desde"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={fDesde} onSelect={setFDesde} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Hasta</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("h-8 w-full justify-start text-xs font-normal px-2", !fHasta && "text-muted-foreground")}>
+                    <CalendarIcon className="h-3 w-3 mr-1.5" />
+                    {fHasta ? format(fHasta, "dd/MM/yyyy") : "Hasta"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={fHasta} onSelect={setFHasta} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Cliente</label>
+                <Input
+                  value={fCliente}
+                  onChange={e => setFCliente(e.target.value)}
+                  placeholder="Buscar cliente…"
+                  className="h-8 text-xs"
+                />
+              </div>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground shrink-0">
+                  <X className="h-3 w-3" /> Limpiar
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
