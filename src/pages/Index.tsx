@@ -6,6 +6,7 @@ import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
 import GoalsSection from "@/components/dashboard/GoalsSection";
 import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSection";
+import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   fetchVentas,
@@ -100,6 +101,7 @@ const Index = () => {
           <Tabs defaultValue="resumen" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
+              <TabsTrigger value="panorama">Panorama</TabsTrigger>
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
               <TabsTrigger value="metas">Metas</TabsTrigger>
               <TabsTrigger value="logistica">Logística Avanzada</TabsTrigger>
@@ -109,6 +111,10 @@ const Index = () => {
               <KPICards metrics={metrics} />
               <AnalyticsSection data={filteredData} />
               <DataTable data={filteredData} />
+            </TabsContent>
+
+            <TabsContent value="panorama" className="space-y-6">
+              <PanoramaSection data={filteredData} />
             </TabsContent>
 
             <TabsContent value="tendencias">
