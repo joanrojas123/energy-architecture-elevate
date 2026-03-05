@@ -29,6 +29,7 @@ interface Props {
 
 const EXCL = ["cancelado", "rechazado"];
 const INVALID_ESTRELLA = ["", "vacio", "vacio vacio"];
+const displayEstrella = (name: string) => INVALID_ESTRELLA.includes(norm(name)) ? "Sin nombre" : name;
 const norm = (s: string) => (s || "").trim().toLowerCase();
 
 const fmt = (n: number) =>
@@ -181,8 +182,7 @@ const PanoramaSection = ({ data, rawData }: Props) => {
     const allOrderIds = new Set(filteredKPIData.map(r => r.order_id));
     const tasaExito = allOrderIds.size > 0 ? (entregadas.size / allOrderIds.size) * 100 : 0;
 
-    const cleanedEstrellas = cleanEstrellas(active);
-    const estrellas = new Set(cleanedEstrellas.map(r => r.estrella_nombre).filter(Boolean)).size;
+    const estrellas = new Set(active.map(r => r.estrella_nombre || "Sin nombre")).size;
 
     return { totalRevenue, totalOrdenes, aov, margenProm, tasaExito, estrellas };
   }, [filteredKPIData]);
@@ -256,15 +256,13 @@ const PanoramaSection = ({ data, rawData }: Props) => {
   const marcaSort = useSortable(marcaRows, "revenue" as any, "desc");
   const maxMarcaRevenue = Math.max(...marcaRows.map(r => r.revenue), 1);
 
-  /* ── 4. Top 10 Estrellas (clean) ── */
+  /* ── 4. Top 10 Estrellas ── */
   const estrellaRows = useMemo(() => {
-    const cleaned = cleanEstrellas(allActive);
     const map = new Map<string, { orders: Set<string>; revenue: number; lastDate: string; segment: string }>();
-    for (const r of cleaned) {
-      const s = r.estrella_nombre;
-      if (!s) continue;
-      if (!map.has(s)) map.set(s, { orders: new Set(), revenue: 0, lastDate: "", segment: "" });
-      const e = map.get(s)!;
+    for (const r of allActive) {
+      const key = INVALID_ESTRELLA.includes(norm(r.estrella_nombre)) ? "Sin nombre" : r.estrella_nombre;
+      if (!map.has(key)) map.set(key, { orders: new Set(), revenue: 0, lastDate: "", segment: "" });
+      const e = map.get(key)!;
       e.orders.add(r.order_id);
       e.revenue += r.pvp_total * r.unidades;
       if (r.fecha_creacion > e.lastDate) { e.lastDate = r.fecha_creacion; e.segment = r.estrella_inactivity_segment; }
@@ -566,7 +564,7 @@ const PanoramaSection = ({ data, rawData }: Props) => {
             <tbody>
               {estrellaSort.sorted.map((r) => (
                 <tr key={r.estrella} className="border-b border-border/50 last:border-0">
-                  <td className="py-1.5 text-foreground font-medium">{r.estrella}</td>
+                  <td className="py-1.5 text-foreground font-medium">{displayEstrella(r.estrella)}</td>
                   <td className="py-1.5 text-right font-bold text-foreground">{num(r.ordenes)}</td>
                   <td className="py-1.5 text-right font-medium text-foreground">{fmt(r.revenue)}</td>
                   <td className="py-1.5 text-right text-foreground">{fmt(r.aov)}</td>

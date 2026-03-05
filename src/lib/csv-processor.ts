@@ -195,19 +195,12 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
   const marcasUnicas = new Set(activeRows.map((r) => r.marca).filter(Boolean)).size;
   const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre).filter(Boolean)).size;
 
-  // --- HOY: parse dates to compare year/month/day to avoid format mismatches ---
+  // --- HOY: dynamic M/D/YYYY format matching Fecha_sin_hora_UTC ---
   const now = new Date();
-  const nowY = now.getFullYear(), nowM = now.getMonth(), nowD = now.getDate();
-  const parseFechaLocal = (f: string): Date | null => {
-    if (!f) return null;
-    const parts = f.trim().split('/');
-    if (parts.length < 3) return null;
-    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-  };
-  const todayActive = activeRows.filter((r) => {
-    const d = parseFechaLocal(r.fecha_creacion_dia);
-    return d && d.getFullYear() === nowY && d.getMonth() === nowM && d.getDate() === nowD;
-  });
+  const fechaHoy = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+  const todayActive = activeRows.filter((r) =>
+    r.fecha_creacion_dia && r.fecha_creacion_dia.trim() === fechaHoy
+  );
   const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
   const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
 
