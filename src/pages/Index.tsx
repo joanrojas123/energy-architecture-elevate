@@ -114,7 +114,7 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="panorama" className="space-y-6">
-              <PanoramaSection data={filteredData} />
+              <PanoramaSection data={filteredData} rawData={rawData} />
             </TabsContent>
 
             <TabsContent value="tendencias">
