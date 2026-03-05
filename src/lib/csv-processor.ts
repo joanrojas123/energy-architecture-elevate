@@ -193,23 +193,43 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
   ).size;
 
   const marcasUnicas = new Set(activeRows.map((r) => r.marca).filter(Boolean)).size;
-  const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre).filter(Boolean)).size;
+  const estrellasUnicas = new Set(activeRows.map((r) => r.estrella_nombre || 'sin_nombre')).size;
 
-  // --- HOY: dynamic M/D/YYYY format matching Fecha_sin_hora_UTC ---
+  // --- HOY: use allRows to avoid month-filter hiding today's orders ---
   const now = new Date();
-  const fechaHoy = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
-  const todayActive = activeRows.filter((r) =>
-    r.fecha_creacion_dia && r.fecha_creacion_dia.trim() === fechaHoy
-  );
+  const nowY = now.getFullYear(), nowM = now.getMonth(), nowD = now.getDate();
+  const parseFechaLocal = (f: string): Date | null => {
+    if (!f) return null;
+    const parts = f.trim().split('/');
+    if (parts.length < 3) return null;
+    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+  };
+  const todaySource = allRows || rows;
+  const todayActive = todaySource.filter((r) => {
+    if (ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual))) return false;
+    const d = parseFechaLocal(r.fecha_creacion_dia);
+    return d && d.getFullYear() === nowY && d.getMonth() === nowM && d.getDate() === nowD;
+  });
   const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
   const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
 
-  // --- WoW uses ALL rows to compare across months ---
+  // --- WoW: dynamic week calculation ---
+  const getISOWeek = (d: Date): number => {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  };
   const wowSource = allRows || rows;
-  const currentWeek = 10;
-  const prevWeek = 9;
+  const now2 = new Date();
+  const currentWeek = getISOWeek(now2);
+  const currentPeriod = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}`;
+  const prevWeekDate = new Date(now2);
+  prevWeekDate.setDate(prevWeekDate.getDate() - 7);
+  const prevWeek = getISOWeek(prevWeekDate);
+  const prevPeriod = `${prevWeekDate.getFullYear()}-${String(prevWeekDate.getMonth() + 1).padStart(2, '0')}`;
 
-  // WoW uses ALL rows (not just filtered by month), filtering by period+week
   const weekActiveRows = (wk: number, period: string) =>
     wowSource.filter((r) =>
       !ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual)) &&
@@ -217,8 +237,8 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
       r.mes_id === period
     );
 
-  const currentWeekRows = weekActiveRows(currentWeek, "2026-03");
-  const prevWeekRows = weekActiveRows(prevWeek, "2026-02");
+  const currentWeekRows = weekActiveRows(currentWeek, currentPeriod);
+  const prevWeekRows = weekActiveRows(prevWeek, prevPeriod);
 
   const semOrdenesActual = new Set(currentWeekRows.map((r) => r.order_id)).size;
   const semOrdenesAnterior = new Set(prevWeekRows.map((r) => r.order_id)).size;
