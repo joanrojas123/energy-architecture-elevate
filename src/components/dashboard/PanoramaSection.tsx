@@ -112,12 +112,16 @@ const PanoramaSection = ({ data, rawData }: Props) => {
     setFMarcas([]); setFProductos([]); setFEstrellas([]); setFSemanas([]); setFCliente(""); setFDesde(undefined); setFHasta(undefined);
   };
 
-  const parseFecha = (fecha: string): Date | null => {
-    if (!fecha) return null;
-    const trimmed = fecha.trim();
-    const parts = trimmed.split('/');
-    if (parts.length < 3) return null;
-    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+  const parseCualquierFecha = (f: string): Date | null => {
+    if (!f) return null;
+    // Formato M/D/YYYY
+    if (f.includes('/') && f.length <= 10) {
+      const p = f.trim().split('/');
+      return new Date(parseInt(p[2]), parseInt(p[0]) - 1, parseInt(p[1]));
+    }
+    // Formato Date string completo
+    const d = new Date(f);
+    return isNaN(d.getTime()) ? null : d;
   };
 
   /* ── Unique values for dropdowns (from rawData) ── */
@@ -146,11 +150,13 @@ const PanoramaSection = ({ data, rawData }: Props) => {
       f = f.filter(r => norm(r.cliente).includes(q));
     }
     if (fDesde || fHasta) {
+      const desdeDate = fDesde ? new Date(fDesde.getFullYear(), fDesde.getMonth(), fDesde.getDate(), 0, 0, 0) : null;
+      const hastaDate = fHasta ? new Date(fHasta.getFullYear(), fHasta.getMonth(), fHasta.getDate(), 23, 59, 59, 999) : null;
       f = f.filter(r => {
-        const d = parseFecha(r.fecha_creacion);
+        const d = parseCualquierFecha(r.fecha_creacion_dia);
         if (!d) return false;
-        if (fDesde && d < fDesde) return false;
-        if (fHasta) { const end = new Date(fHasta); end.setHours(23, 59, 59, 999); if (d > end) return false; }
+        if (desdeDate && d < desdeDate) return false;
+        if (hastaDate && d > hastaDate) return false;
         return true;
       });
     }
