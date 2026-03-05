@@ -74,9 +74,10 @@ const AnalyticsSection = ({ data }: AnalyticsSectionProps) => {
         brandRevenue[b] = (brandRevenue[b] || 0) + r.pvp_total * r.unidades;
       }
       if (s) {
-        if (!starOrders[s]) starOrders[s] = new Set();
-        starOrders[s].add(r.order_id);
-        starRevenue[s] = (starRevenue[s] || 0) + r.pvp_total * r.unidades;
+        const key = ["", "vacio", "vacio vacio"].includes(s.trim().toLowerCase()) ? "Sin nombre" : s;
+        if (!starOrders[key]) starOrders[key] = new Set();
+        starOrders[key].add(r.order_id);
+        starRevenue[key] = (starRevenue[key] || 0) + r.pvp_total * r.unidades;
       }
     }
 
