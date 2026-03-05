@@ -4,12 +4,17 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer,
 } from "recharts";
 import {
   DollarSign, ShoppingCart, TrendingUp, Activity, Percent, Users,
-  ArrowUpDown,
+  ArrowUpDown, X,
 } from "lucide-react";
 import type { SalesRow } from "@/lib/csv-processor";
 
@@ -19,12 +24,25 @@ interface Props {
 }
 
 const EXCL = ["cancelado", "rechazado"];
+const INVALID_ESTRELLA = ["", "vacio", "vacio vacio"];
 const norm = (s: string) => (s || "").trim().toLowerCase();
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 const num = (n: number) => n.toLocaleString("es-CO");
 const pct = (n: number) => `${n.toFixed(1)}%`;
+
+const formatDateDMY = (d: string) => {
+  if (!d) return "—";
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return d;
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  } catch { return d; }
+};
 
 type SortDir = "asc" | "desc";
 
@@ -76,56 +94,102 @@ interface KPI {
 }
 
 const PanoramaSection = ({ data, rawData }: Props) => {
-  /* ── KPIs (filtered by month) ── */
+  /* ── Filter state ── */
+  const [fMarca, setFMarca] = useState("all");
+  const [fProducto, setFProducto] = useState("all");
+  const [fEstrella, setFEstrella] = useState("all");
+  const [fSemana, setFSemana] = useState("all");
+  const [fCliente, setFCliente] = useState("");
+
+  const clearFilters = () => {
+    setFMarca("all"); setFProducto("all"); setFEstrella("all"); setFSemana("all"); setFCliente("");
+  };
+
+  /* ── Unique values for dropdowns (from rawData) ── */
+  const uniqueMarcas = useMemo(() => [...new Set(rawData.map(r => r.marca).filter(Boolean))].sort(), [rawData]);
+  const uniqueProductos = useMemo(() => [...new Set(rawData.map(r => r.producto).filter(Boolean))].sort(), [rawData]);
+  const uniqueEstrellas = useMemo(() =>
+    [...new Set(rawData.map(r => r.estrella_nombre).filter(s => s && !INVALID_ESTRELLA.includes(norm(s))))].sort(),
+    [rawData]
+  );
+  const uniqueSemanas = useMemo(() =>
+    [...new Set(rawData.map(r => r.semana_del_anio).filter(Boolean))].sort((a, b) => a - b),
+    [rawData]
+  );
+
+  const hasActiveFilters = fMarca !== "all" || fProducto !== "all" || fEstrella !== "all" || fSemana !== "all" || fCliente !== "";
+
+  /* ── Apply filters to data (month-filtered) and rawData ── */
+  const applyFilters = (rows: SalesRow[]) => {
+    let f = rows;
+    if (fMarca !== "all") f = f.filter(r => r.marca === fMarca);
+    if (fProducto !== "all") f = f.filter(r => r.producto === fProducto);
+    if (fEstrella !== "all") f = f.filter(r => r.estrella_nombre === fEstrella);
+    if (fSemana !== "all") f = f.filter(r => r.semana_del_anio === Number(fSemana));
+    if (fCliente) {
+      const q = norm(fCliente);
+      f = f.filter(r => norm(r.cliente).includes(q));
+    }
+    return f;
+  };
+
+  const filteredKPIData = useMemo(() => applyFilters(data), [data, fMarca, fProducto, fEstrella, fSemana, fCliente]);
+  const filteredRawData = useMemo(() => applyFilters(rawData), [rawData, fMarca, fProducto, fEstrella, fSemana, fCliente]);
+
+  /* ── Clean data helpers ── */
+  const cleanActive = (rows: SalesRow[]) =>
+    rows.filter(r => !EXCL.includes(norm(r.estado_actual)) && r.pvp_total > 0);
+
+  const cleanEstrellas = (rows: SalesRow[]) =>
+    rows.filter(r => !INVALID_ESTRELLA.includes(norm(r.estrella_nombre)));
+
+  /* ── KPIs (filtered by month + local filters) ── */
   const metrics = useMemo(() => {
-    const active = data.filter((r) => !EXCL.includes(norm(r.estado_actual)));
-    const orderIds = new Set(active.map((r) => r.order_id));
+    const active = cleanActive(filteredKPIData);
+    const orderIds = new Set(active.map(r => r.order_id));
     const totalOrdenes = orderIds.size;
     const totalRevenue = active.reduce((s, r) => s + r.pvp_total * r.unidades, 0);
     const aov = totalOrdenes > 0 ? totalRevenue / totalOrdenes : 0;
 
-    const margenValid = active.filter((r) => r.margen_neto !== undefined && !isNaN(r.margen_neto) && r.margen_neto !== 0);
+    const margenValid = active.filter(r => r.margen_neto !== undefined && !isNaN(r.margen_neto) && r.margen_neto !== 0);
     const margenProm = margenValid.length > 0 ? margenValid.reduce((s, r) => s + r.margen_neto, 0) / margenValid.length : 0;
 
-    const entregadas = new Set(active.filter((r) => norm(r.estado_actual) === "entregado").map((r) => r.order_id));
-    const allOrderIds = new Set(data.map((r) => r.order_id));
+    const entregadas = new Set(active.filter(r => norm(r.estado_actual) === "entregado").map(r => r.order_id));
+    const allOrderIds = new Set(filteredKPIData.map(r => r.order_id));
     const tasaExito = allOrderIds.size > 0 ? (entregadas.size / allOrderIds.size) * 100 : 0;
 
-    const estrellas = new Set(active.map((r) => r.estrella_nombre).filter(Boolean)).size;
+    const cleanedEstrellas = cleanEstrellas(active);
+    const estrellas = new Set(cleanedEstrellas.map(r => r.estrella_nombre).filter(Boolean)).size;
 
     return { totalRevenue, totalOrdenes, aov, margenProm, tasaExito, estrellas };
-  }, [data]);
+  }, [filteredKPIData]);
 
-  /* ── All data (unfiltered) active rows ── */
-  const allActive = useMemo(
-    () => rawData.filter((r) => !EXCL.includes(norm(r.estado_actual))),
-    [rawData]
-  );
+  /* ── All filtered raw active rows ── */
+  const allActive = useMemo(() => cleanActive(filteredRawData), [filteredRawData]);
 
   /* ── 1. Resumen por Mes ── */
   const mesRows = useMemo(() => {
     const map = new Map<string, { orders: Set<string>; revenue: number; entregadas: Set<string>; allOrders: Set<string> }>();
-    for (const r of rawData) {
+    for (const r of filteredRawData) {
       const m = r.mes_id;
       if (!m) continue;
       if (!map.has(m)) map.set(m, { orders: new Set(), revenue: 0, entregadas: new Set(), allOrders: new Set() });
       const e = map.get(m)!;
       e.allOrders.add(r.order_id);
-      if (!EXCL.includes(norm(r.estado_actual))) {
+      if (!EXCL.includes(norm(r.estado_actual)) && r.pvp_total > 0) {
         e.orders.add(r.order_id);
         e.revenue += r.pvp_total * r.unidades;
       }
       if (norm(r.estado_actual) === "entregado") e.entregadas.add(r.order_id);
     }
-    const rows = [...map.entries()].map(([mes, v]) => ({
+    return [...map.entries()].map(([mes, v]) => ({
       mes,
       ordenes: v.orders.size,
-      revenue: v.revenue,
-      aov: v.orders.size > 0 ? v.revenue / v.orders.size : 0,
+      revenue: Math.max(v.revenue, 0),
+      aov: v.orders.size > 0 ? Math.max(v.revenue, 0) / v.orders.size : 0,
       tasaExito: v.allOrders.size > 0 ? (v.entregadas.size / v.allOrders.size) * 100 : 0,
     })).sort((a, b) => a.mes.localeCompare(b.mes));
-    return rows;
-  }, [rawData]);
+  }, [filteredRawData]);
 
   const mesTotals = useMemo(() => {
     const ordenes = mesRows.reduce((s, r) => s + r.ordenes, 0);
@@ -134,12 +198,13 @@ const PanoramaSection = ({ data, rawData }: Props) => {
   }, [mesRows]);
 
   const mesSort = useSortable(mesRows, "mes" as any, "asc");
-  const maxMesRevenue = Math.max(...mesRows.map((r) => r.revenue), 1);
+  const maxMesRevenue = Math.max(...mesRows.map(r => r.revenue), 1);
 
-  /* ── 2. Evolución Revenue (line chart) ── */
-  const lineData = useMemo(() => {
-    return mesRows.map((r) => ({ mes: r.mes, revenue: r.revenue }));
-  }, [mesRows]);
+  /* ── 2. Evolución Revenue (line chart) — exclude months with revenue <= 0 ── */
+  const lineData = useMemo(() =>
+    mesRows.filter(r => r.revenue > 0).map(r => ({ mes: r.mes, revenue: r.revenue })),
+    [mesRows]
+  );
 
   /* ── 3. Top 10 Marcas ── */
   const marcaRows = useMemo(() => {
@@ -166,12 +231,13 @@ const PanoramaSection = ({ data, rawData }: Props) => {
   }, [allActive]);
 
   const marcaSort = useSortable(marcaRows, "revenue" as any, "desc");
-  const maxMarcaRevenue = Math.max(...marcaRows.map((r) => r.revenue), 1);
+  const maxMarcaRevenue = Math.max(...marcaRows.map(r => r.revenue), 1);
 
-  /* ── 4. Top 10 Estrellas ── */
+  /* ── 4. Top 10 Estrellas (clean) ── */
   const estrellaRows = useMemo(() => {
+    const cleaned = cleanEstrellas(allActive);
     const map = new Map<string, { orders: Set<string>; revenue: number; lastDate: string; segment: string }>();
-    for (const r of allActive) {
+    for (const r of cleaned) {
       const s = r.estrella_nombre;
       if (!s) continue;
       if (!map.has(s)) map.set(s, { orders: new Set(), revenue: 0, lastDate: "", segment: "" });
@@ -233,12 +299,12 @@ const PanoramaSection = ({ data, rawData }: Props) => {
 
   /* ── KPI cards ── */
   const kpis: KPI[] = [
-    { label: "Revenue PVP", value: fmt(metrics.totalRevenue), icon: DollarSign, color: "text-success", bg: "bg-success/10", tip: "SUM(PVP × Unidades) excl. cancelados" },
+    { label: "Revenue PVP", value: fmt(metrics.totalRevenue), icon: DollarSign, color: "text-success", bg: "bg-success/10", tip: "SUM(PVP × Unidades) excl. cancelados, PVP>0" },
     { label: "Órdenes", value: num(metrics.totalOrdenes), icon: ShoppingCart, color: "text-process", bg: "bg-process/10", tip: "COUNT DISTINCT order_id activas" },
     { label: "AOV", value: fmt(metrics.aov), icon: TrendingUp, color: "text-pending", bg: "bg-pending/10", tip: "Revenue / Órdenes" },
     { label: "Margen Neto Prom.", value: fmt(metrics.margenProm), icon: Activity, color: "text-process", bg: "bg-process/10", tip: "AVG(Margen_Neto_Operativo) en pesos" },
     { label: "Tasa de Éxito", value: `${metrics.tasaExito.toFixed(1)}%`, icon: Percent, color: "text-success", bg: "bg-success/10", tip: "Entregadas / Total órdenes × 100" },
-    { label: "Estrellas Activas", value: num(metrics.estrellas), icon: Users, color: "text-pending", bg: "bg-pending/10", tip: "COUNT DISTINCT estrella activas" },
+    { label: "Estrellas Activas", value: num(metrics.estrellas), icon: Users, color: "text-pending", bg: "bg-pending/10", tip: "COUNT DISTINCT estrella activas (excl. vacío)" },
   ];
 
   return (
@@ -247,6 +313,68 @@ const PanoramaSection = ({ data, rawData }: Props) => {
         <h2 className="text-lg font-bold tracking-tight mb-1">Visión General</h2>
         <div className="h-px bg-border" />
       </div>
+
+      {/* ── Filter row ── */}
+      <Card className="border border-border">
+        <CardContent className="px-3 py-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[140px]">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Marca</label>
+              <Select value={fMarca} onValueChange={setFMarca}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {uniqueMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[160px]">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Producto</label>
+              <Select value={fProducto} onValueChange={setFProducto}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueProductos.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[140px]">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Estrella</label>
+              <Select value={fEstrella} onValueChange={setFEstrella}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {uniqueEstrellas.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[100px]">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Semana</label>
+              <Select value={fSemana} onValueChange={setFSemana}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {uniqueSemanas.map(s => <SelectItem key={s} value={String(s)}>S{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[160px]">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">Cliente</label>
+              <Input
+                value={fCliente}
+                onChange={e => setFCliente(e.target.value)}
+                placeholder="Buscar cliente…"
+                className="h-8 text-xs"
+              />
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" /> Limpiar filtros
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
@@ -308,7 +436,6 @@ const PanoramaSection = ({ data, rawData }: Props) => {
                   </td>
                 </tr>
               ))}
-              {/* Totals row */}
               <tr className="border-t-2 border-border font-bold">
                 <td className="py-1.5 text-foreground">Total</td>
                 <td className="py-1.5 text-right text-foreground">{num(mesTotals.ordenes)}</td>
@@ -409,7 +536,7 @@ const PanoramaSection = ({ data, rawData }: Props) => {
                   <td className="py-1.5 text-right font-bold text-foreground">{num(r.ordenes)}</td>
                   <td className="py-1.5 text-right font-medium text-foreground">{fmt(r.revenue)}</td>
                   <td className="py-1.5 text-right text-foreground">{fmt(r.aov)}</td>
-                  <td className="py-1.5 text-foreground">{r.lastDate}</td>
+                  <td className="py-1.5 text-foreground">{formatDateDMY(r.lastDate)}</td>
                   <td className="py-1.5">{segmentBadge(r.segment)}</td>
                 </tr>
               ))}
