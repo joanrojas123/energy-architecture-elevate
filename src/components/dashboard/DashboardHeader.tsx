@@ -11,10 +11,11 @@ interface DashboardHeaderProps {
   onRefresh: () => void;
   hasData: boolean;
   loading: boolean;
+  lastUpdate?: string | null;
 }
 
 const DashboardHeader = ({
-  meses, selectedMes, onMesChange, onRefresh, hasData, loading,
+  meses, selectedMes, onMesChange, onRefresh, hasData, loading, lastUpdate,
 }: DashboardHeaderProps) => {
   return (
     <header className="border-b border-border bg-card px-6 py-4">
@@ -40,6 +41,10 @@ const DashboardHeader = ({
                 ))}
               </SelectContent>
             </Select>
+          )}
+
+          {lastUpdate && (
+            <span className="text-xs text-muted-foreground">Última actualización: {lastUpdate}</span>
           )}
 
           <Button

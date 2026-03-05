@@ -31,6 +31,7 @@ const Index = () => {
   const [selectedMes, setSelectedMes] = useState("2026-03");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -38,6 +39,8 @@ const Index = () => {
     try {
       const rows = await fetchVentas();
       setRawData(rows);
+      const now = new Date();
+      setLastUpdate(now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false }));
     } catch (err: any) {
       console.error("Error fetching Ventas:", err);
       setError(err.message || "Error al cargar datos");
@@ -71,6 +74,7 @@ const Index = () => {
         onRefresh={loadData}
         hasData={hasData}
         loading={loading}
+        lastUpdate={lastUpdate}
       />
 
       <div className="mx-auto max-w-[1440px] space-y-6 p-6">
