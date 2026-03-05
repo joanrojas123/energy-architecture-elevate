@@ -3,7 +3,6 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import KPICards from "@/components/dashboard/KPICards";
 import DataTable from "@/components/dashboard/DataTable";
 import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
-import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
 import GoalsSection from "@/components/dashboard/GoalsSection";
 import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSection";
@@ -101,7 +100,6 @@ const Index = () => {
           <Tabs defaultValue="resumen" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
-              <TabsTrigger value="panorama">Panorama</TabsTrigger>
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
               <TabsTrigger value="metas">Metas</TabsTrigger>
               <TabsTrigger value="logistica">Logística Avanzada</TabsTrigger>
@@ -111,10 +109,6 @@ const Index = () => {
               <KPICards metrics={metrics} />
               <AnalyticsSection data={filteredData} />
               <DataTable data={filteredData} />
-            </TabsContent>
-
-            <TabsContent value="panorama">
-              <PanoramaSection data={filteredData} />
             </TabsContent>
 
             <TabsContent value="tendencias">
