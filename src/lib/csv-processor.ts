@@ -201,17 +201,21 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
   console.log('HOY buscando:', nowY, nowM, nowD);
   console.log('Total allRows:', (allRows || rows).length);
   console.log('Muestra fecha_creacion_dia:', (allRows || rows).slice(0,3).map(r => r.fecha_creacion_dia));
-  const parseFechaLocal = (f: string): Date | null => {
-    if (!f) return null;
-    const parts = f.trim().split('/');
-    if (parts.length < 3) return null;
-    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-  };
   const todaySource = allRows || rows;
   const todayActive = todaySource.filter((r) => {
     if (ESTADOS_EXCLUIDOS.includes(normalize(r.estado_actual))) return false;
-    const d = parseFechaLocal(r.fecha_creacion_dia);
-    return d && d.getFullYear() === nowY && d.getMonth() === nowM && d.getDate() === nowD;
+    const f = r.fecha_creacion_dia;
+    if (!f) return false;
+    // Handle both "M/D/YYYY" and full Date strings like "Thu Mar 13 2025 00:00:00..."
+    let d: Date;
+    if (f.includes('/') && f.length <= 10) {
+      const parts = f.trim().split('/');
+      d = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+    } else {
+      d = new Date(f);
+    }
+    if (isNaN(d.getTime())) return false;
+    return d.getFullYear() === nowY && d.getMonth() === nowM && d.getDate() === nowD;
   });
   const diaOrdenesHoy = new Set(todayActive.map((r) => r.order_id)).size;
   const diaRevenueHoy = todayActive.reduce((sum, r) => sum + r.pvp_total * r.unidades, 0);
