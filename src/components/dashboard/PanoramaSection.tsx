@@ -87,7 +87,7 @@ const PanoramaSection = ({ data }: PanoramaSectionProps) => {
     );
     const aov = totalOrdenes > 0 ? totalRevenue / totalOrdenes : 0;
 
-    // Margen Neto Promedio — use raw data field, re-parse to handle NaN
+    // Margen Neto Promedio — only rows with valid non-zero margen_neto
     const margenValues = activeRows
       .map((r) => r.margen_neto)
       .filter((v) => !isNaN(v) && v !== 0);
@@ -119,36 +119,42 @@ const PanoramaSection = ({ data }: PanoramaSectionProps) => {
     };
   }, [activeRows, data]);
 
-  // Revenue por semana
+  // Revenue por semana — group by semana_del_anio, exclude cancelado/rechazado
   const weeklyRevenue = useMemo(() => {
     const map = new Map<number, number>();
-    activeRows.forEach((r) => {
-      if (r.semana_del_anio > 0) {
-        map.set(
-          r.semana_del_anio,
-          (map.get(r.semana_del_anio) || 0) + r.pvp_total * r.unidades
-        );
-      }
+    data.forEach((r) => {
+      if (!r.semana_del_anio || r.semana_del_anio <= 0) return;
+      if (EXCLUIDOS.includes(norm(r.estado_actual))) return;
+      const rev = r.pvp_total * (r.unidades || 1);
+      map.set(r.semana_del_anio, (map.get(r.semana_del_anio) || 0) + rev);
     });
     return [...map.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([week, revenue]) => ({ week: `S${week}`, revenue }));
-  }, [activeRows]);
+      .map(([week, revenue]) => ({ week: `Sem ${week}`, revenue }));
+  }, [data]);
 
-  // Heatmap data
+  // Heatmap data — parse Fecha_sin_hora_UTC (M/D/YYYY) properly
   const heatmapData = useMemo(() => {
-    // Find max week of month
     const weekSet = new Set<number>();
     const cellMap = new Map<string, Set<string>>();
 
     activeRows.forEach((r) => {
-      if (!r.fecha_creacion) return;
-      const dow = getDayOfWeek(r.fecha_creacion);
-      const wom = getWeekOfMonth(r.fecha_creacion);
+      const fechaStr = r.fecha_creacion;
+      if (!fechaStr) return;
+      const parts = fechaStr.split("/");
+      if (parts.length < 3) return;
+      const d = new Date(
+        parseInt(parts[2]),
+        parseInt(parts[0]) - 1,
+        parseInt(parts[1])
+      );
+      if (isNaN(d.getTime())) return;
+      const dow = d.getDay(); // 0=Dom
       const dayIdx = DAY_MAP[dow];
       if (dayIdx === undefined) return;
-      weekSet.add(wom);
-      const key = `${dayIdx}-${wom}`;
+      const semanaRelativa = Math.ceil(d.getDate() / 7);
+      weekSet.add(semanaRelativa);
+      const key = `${dayIdx}-${semanaRelativa}`;
       if (!cellMap.has(key)) cellMap.set(key, new Set());
       cellMap.get(key)!.add(r.order_id);
     });
@@ -193,7 +199,7 @@ const PanoramaSection = ({ data }: PanoramaSectionProps) => {
     },
     {
       label: "MARGEN NETO PROM.",
-      value: `${kpis.margenPromedio.toFixed(1)}%`,
+      value: fmt(kpis.margenPromedio),
       icon: PieChart,
       color: "text-chart-purple",
       bg: "bg-chart-purple/10",
