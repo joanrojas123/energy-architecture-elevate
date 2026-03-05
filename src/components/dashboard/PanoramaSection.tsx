@@ -113,8 +113,9 @@ const PanoramaSection = ({ data, rawData }: Props) => {
 
   const parseFecha = (fecha: string): Date | null => {
     if (!fecha) return null;
-    const parts = fecha.split('/');
-    if (parts.length !== 3) return null;
+    const trimmed = fecha.trim();
+    const parts = trimmed.split('/');
+    if (parts.length < 3) return null;
     return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
   };
 
