@@ -198,6 +198,9 @@ export function calculateMetrics(rows: SalesRow[], allRows?: SalesRow[]): Dashbo
   // --- HOY: use allRows to avoid month-filter hiding today's orders ---
   const now = new Date();
   const nowY = now.getFullYear(), nowM = now.getMonth(), nowD = now.getDate();
+  console.log('HOY buscando:', nowY, nowM, nowD);
+  console.log('Total allRows:', (allRows || rows).length);
+  console.log('Muestra fecha_creacion_dia:', (allRows || rows).slice(0,3).map(r => r.fecha_creacion_dia));
   const parseFechaLocal = (f: string): Date | null => {
     if (!f) return null;
     const parts = f.trim().split('/');
