@@ -6,6 +6,7 @@ import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
 import GoalsSection from "@/components/dashboard/GoalsSection";
 import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSection";
+import KPIsOperativosSection from "@/components/dashboard/KPIsOperativosSection";
 import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
