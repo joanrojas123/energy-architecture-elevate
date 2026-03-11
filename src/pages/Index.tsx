@@ -6,6 +6,7 @@ import AnalyticsSection from "@/components/dashboard/AnalyticsSection";
 import TrendsSection from "@/components/dashboard/TrendsSection";
 import GoalsSection from "@/components/dashboard/GoalsSection";
 import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSection";
+import KPIsOperativosSection from "@/components/dashboard/KPIsOperativosSection";
 import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -109,6 +110,7 @@ const Index = () => {
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
               <TabsTrigger value="metas">Metas</TabsTrigger>
               <TabsTrigger value="logistica">Logística Avanzada</TabsTrigger>
+              <TabsTrigger value="kpis-operativos">KPIs Operativos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resumen" className="space-y-6">
@@ -131,6 +133,10 @@ const Index = () => {
 
             <TabsContent value="logistica">
               <LogisticaAvanzadaSection />
+            </TabsContent>
+
+            <TabsContent value="kpis-operativos" className="space-y-6">
+              <KPIsOperativosSection />
             </TabsContent>
           </Tabs>
         )}
