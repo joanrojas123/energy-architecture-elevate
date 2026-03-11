@@ -1,5 +1,6 @@
-import { RefreshCw, BarChart3 } from "lucide-react";
+import { RefreshCw, BarChart3, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -46,6 +47,12 @@ const DashboardHeader = ({
           {lastUpdate && (
             <span className="text-xs text-muted-foreground">Última actualización: {lastUpdate}</span>
           )}
+
+          <Link to="/logistica">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Truck className="h-4 w-4" /> KPIs Logística
+            </Button>
+          </Link>
 
           <Button
             onClick={onRefresh}
