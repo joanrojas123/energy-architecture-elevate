@@ -41,9 +41,11 @@ const num = (n: number) => n.toLocaleString("es-CO");
 
 const KPIsOperativosSection = () => {
   const [loading, setLoading] = useState(true);
-  const [filterOpts, setFilterOpts] = useState<FilterOptions>({ anios: [], meses: [], semanas: [], transportadoras: [], proveedores: [], ciudades: [] });
+  const [filterOpts, setFilterOpts] = useState<FilterOptions>({
+    anios: [], meses: [], semanas: [], transportadoras: [], proveedores: [], ciudades: [],
+  });
 
-  // Filters
+  /* ── Filter state ── */
   const [fAnio, setFAnio] = useState("all");
   const [fMes, setFMes] = useState("all");
   const [fSemana, setFSemana] = useState("all");
@@ -52,17 +54,20 @@ const KPIsOperativosSection = () => {
   const [fCiudad, setFCiudad] = useState("all");
   const [searchOrder, setSearchOrder] = useState("");
 
-  // Data
+  /* ── Data state ── */
   const [eventos, setEventos] = useState<any[]>([]);
   const [kpiSemanal, setKpiSemanal] = useState<any[]>([]);
   const [transportadoras, setTransportadoras] = useState<any[]>([]);
   const [riesgo, setRiesgo] = useState<any[]>([]);
   const [atribucion, setAtribucion] = useState<any[]>([]);
 
-  // Load filter options from logistica_eventos
+  /* ── 1. Load filter options (once) ── */
   useEffect(() => {
     const loadFilters = async () => {
-      const { data } = await supabase.from("logistica_eventos").select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino").limit(50000);
+      const { data } = await supabase
+        .from("logistica_eventos")
+        .select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino")
+        .limit(10000);
       if (!data) return;
       setFilterOpts({
         anios: [...new Set(data.map(r => r.orden_anio).filter(v => v != null))].sort((a, b) => a - b) as number[],
@@ -76,24 +81,29 @@ const KPIsOperativosSection = () => {
     loadFilters();
   }, []);
 
-  // Helper: apply all applicable filters to a query
-  const applyAllFilters = useCallback((query: any, availableCols: { anio?: boolean; mes?: boolean; semana?: boolean; transportadora?: boolean; proveedor?: boolean; ciudad?: boolean }) => {
-    if (availableCols.anio && fAnio !== "all") query = query.eq("orden_anio", Number(fAnio));
-    if (availableCols.mes && fMes !== "all") query = query.eq("orden_mes", Number(fMes));
-    if (availableCols.semana && fSemana !== "all") query = query.eq("orden_semana", Number(fSemana));
-    if (availableCols.transportadora && fTransp !== "all") query = query.eq("transportadora", fTransp);
-    if (availableCols.proveedor && fProv !== "all") query = query.eq("proveedor", fProv);
-    if (availableCols.ciudad && fCiudad !== "all") query = query.eq("ciudad_destino", fCiudad);
-    return query;
-  }, [fAnio, fMes, fSemana, fTransp, fProv, fCiudad]);
+  /* ── 2. applyAllFilters helper ── */
+  const applyAllFilters = useCallback(
+    (query: any, cols: { anio?: boolean; mes?: boolean; semana?: boolean; transportadora?: boolean; proveedor?: boolean; ciudad?: boolean }) => {
+      if (cols.anio && fAnio !== "all") query = query.eq("orden_anio", Number(fAnio));
+      if (cols.mes && fMes !== "all") query = query.eq("orden_mes", Number(fMes));
+      if (cols.semana && fSemana !== "all") query = query.eq("orden_semana", Number(fSemana));
+      if (cols.transportadora && fTransp !== "all") query = query.eq("transportadora", fTransp);
+      if (cols.proveedor && fProv !== "all") query = query.eq("proveedor", fProv);
+      if (cols.ciudad && fCiudad !== "all") query = query.eq("ciudad_destino", fCiudad);
+      return query;
+    },
+    [fAnio, fMes, fSemana, fTransp, fProv, fCiudad],
+  );
 
-  // Load all data when filters change
+  /* ── 3. Load data when filters change ── */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        // logistica_eventos for KR cards — has all columns
-        let evQ = supabase.from("logistica_eventos").select("order_id, fue_entregado, tuvo_retroceso, lead_time_acido_dias, lead_time_ajustado_dias, transportadora, proveedor, ciudad_destino");
+        // logistica_eventos — all filter columns available
+        let evQ = supabase
+          .from("logistica_eventos")
+          .select("order_id, fue_entregado, tuvo_retroceso, lead_time_acido_dias, lead_time_ajustado_dias, transportadora, proveedor, ciudad_destino");
         evQ = applyAllFilters(evQ, { anio: true, mes: true, semana: true, transportadora: true, proveedor: true, ciudad: true });
         const { data: evData } = await evQ;
 
