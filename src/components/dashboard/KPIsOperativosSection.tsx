@@ -385,19 +385,16 @@ const KPIsOperativosSection = () => {
                   </TableCell>
                   <TableCell className="text-right">{Number(t.avg_lead_acido).toFixed(1)}</TableCell>
                   <TableCell className="text-right">{num(Number(t.total_retrocesos))}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      t.semaforo === "verde" ? "bg-success/20 text-success" :
-                      t.semaforo === "amarillo" ? "bg-pending/20 text-pending" :
-                      "bg-destructive/20 text-destructive"
-                    }`}>
-                      <span className={`h-2 w-2 rounded-full ${
-                        t.semaforo === "verde" ? "bg-success" :
-                        t.semaforo === "amarillo" ? "bg-pending" : "bg-destructive"
-                      }`} />
-                      {t.semaforo}
-                    </span>
-                  </TableCell>
+                   <TableCell>
+                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                       t.semaforo?.includes("🔴") ? "bg-destructive/20 text-destructive" :
+                       t.semaforo?.includes("🟡") ? "bg-pending/20 text-pending" :
+                       t.semaforo?.includes("✅") ? "bg-success/20 text-success" :
+                       "bg-muted text-muted-foreground"
+                     }`}>
+                       {t.semaforo}
+                     </span>
+                   </TableCell>
                 </TableRow>
               ))}
               {transportadoras.length === 0 && (
