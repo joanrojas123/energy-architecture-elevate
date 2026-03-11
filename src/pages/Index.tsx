@@ -134,6 +134,10 @@ const Index = () => {
             <TabsContent value="logistica">
               <LogisticaAvanzadaSection />
             </TabsContent>
+
+            <TabsContent value="kpis-operativos" className="space-y-6">
+              <KPIsOperativosSection />
+            </TabsContent>
           </Tabs>
         )}
       </div>
