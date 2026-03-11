@@ -110,6 +110,7 @@ const Index = () => {
               <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
               <TabsTrigger value="metas">Metas</TabsTrigger>
               <TabsTrigger value="logistica">Logística Avanzada</TabsTrigger>
+              <TabsTrigger value="kpis-operativos">KPIs Operativos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resumen" className="space-y-6">
