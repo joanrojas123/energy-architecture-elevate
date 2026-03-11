@@ -62,68 +62,63 @@ const KPIsOperativosSection = () => {
   // Load filter options from logistica_eventos
   useEffect(() => {
     const loadFilters = async () => {
-      const { data } = await supabase.from("logistica_eventos").select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino");
+      const { data } = await supabase.from("logistica_eventos").select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino").limit(50000);
       if (!data) return;
       setFilterOpts({
-        anios: [...new Set(data.map(r => r.orden_anio).filter(Boolean))].sort((a, b) => a - b) as number[],
-        meses: [...new Set(data.map(r => r.orden_mes).filter(Boolean))].sort((a, b) => a - b) as number[],
-        semanas: [...new Set(data.map(r => r.orden_semana).filter(Boolean))].sort((a, b) => a - b) as number[],
-        transportadoras: [...new Set(data.map(r => r.transportadora).filter(Boolean))].sort() as string[],
-        proveedores: [...new Set(data.map(r => r.proveedor).filter(Boolean))].sort() as string[],
-        ciudades: [...new Set(data.map(r => r.ciudad_destino).filter(Boolean))].sort() as string[],
+        anios: [...new Set(data.map(r => r.orden_anio).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        meses: [...new Set(data.map(r => r.orden_mes).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        semanas: [...new Set(data.map(r => r.orden_semana).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        transportadoras: [...new Set(data.map(r => r.transportadora).filter(v => v != null && v !== ""))].sort() as string[],
+        proveedores: [...new Set(data.map(r => r.proveedor).filter(v => v != null && v !== ""))].sort() as string[],
+        ciudades: [...new Set(data.map(r => r.ciudad_destino).filter(v => v != null && v !== ""))].sort() as string[],
       });
     };
     loadFilters();
   }, []);
 
-  // Build filter predicate for Supabase queries
-  const applyFilters = useCallback((query: any) => {
-    if (fAnio !== "all") query = query.eq("orden_anio", Number(fAnio));
-    if (fMes !== "all") query = query.eq("orden_mes", Number(fMes));
-    if (fSemana !== "all") query = query.eq("orden_semana", Number(fSemana));
+  // Helper: apply all applicable filters to a query
+  const applyAllFilters = useCallback((query: any, availableCols: { anio?: boolean; mes?: boolean; semana?: boolean; transportadora?: boolean; proveedor?: boolean; ciudad?: boolean }) => {
+    if (availableCols.anio && fAnio !== "all") query = query.eq("orden_anio", Number(fAnio));
+    if (availableCols.mes && fMes !== "all") query = query.eq("orden_mes", Number(fMes));
+    if (availableCols.semana && fSemana !== "all") query = query.eq("orden_semana", Number(fSemana));
+    if (availableCols.transportadora && fTransp !== "all") query = query.eq("transportadora", fTransp);
+    if (availableCols.proveedor && fProv !== "all") query = query.eq("proveedor", fProv);
+    if (availableCols.ciudad && fCiudad !== "all") query = query.eq("ciudad_destino", fCiudad);
     return query;
-  }, [fAnio, fMes, fSemana]);
-
-  const applyTextFilters = useCallback((rows: any[]) => {
-    return rows.filter(r => {
-      if (fTransp !== "all" && r.transportadora !== fTransp) return false;
-      if (fProv !== "all" && (r.proveedor !== fProv && r.provider_name !== fProv)) return false;
-      if (fCiudad !== "all" && r.ciudad_destino !== fCiudad) return false;
-      return true;
-    });
-  }, [fTransp, fProv, fCiudad]);
+  }, [fAnio, fMes, fSemana, fTransp, fProv, fCiudad]);
 
   // Load all data when filters change
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        // logistica_eventos for KR cards
+        // logistica_eventos for KR cards — has all columns
         let evQ = supabase.from("logistica_eventos").select("order_id, fue_entregado, tuvo_retroceso, lead_time_acido_dias, lead_time_ajustado_dias, transportadora, proveedor, ciudad_destino");
-        evQ = applyFilters(evQ);
+        evQ = applyAllFilters(evQ, { anio: true, mes: true, semana: true, transportadora: true, proveedor: true, ciudad: true });
         const { data: evData } = await evQ;
 
-        // v_kpi_semanal
+        // v_kpi_semanal — has orden_anio, orden_mes, orden_semana
         let semQ = supabase.from("v_kpi_semanal").select("*");
-        if (fAnio !== "all") semQ = semQ.eq("orden_anio", Number(fAnio));
-        if (fMes !== "all") semQ = semQ.eq("orden_mes", Number(fMes));
-        if (fSemana !== "all") semQ = semQ.eq("orden_semana", Number(fSemana));
+        semQ = applyAllFilters(semQ, { anio: true, mes: true, semana: true });
         const { data: semData } = await semQ;
 
-        // v_transportadoras (no week/month/year filters available)
-        const { data: trData } = await supabase.from("v_transportadoras").select("*");
+        // v_transportadoras — has transportadora
+        let trQ = supabase.from("v_transportadoras").select("*");
+        trQ = applyAllFilters(trQ, { transportadora: true });
+        const { data: trData } = await trQ;
 
-        // v_ordenes_riesgo
-        const { data: riData } = await supabase.from("v_ordenes_riesgo").select("*").order("dias_desde_creacion", { ascending: false });
+        // v_ordenes_riesgo — has transportadora, proveedor, ciudad_destino
+        let riQ = supabase.from("v_ordenes_riesgo").select("*").order("dias_desde_creacion", { ascending: false });
+        riQ = applyAllFilters(riQ, { transportadora: true, proveedor: true, ciudad: true });
+        const { data: riData } = await riQ;
 
-        // v_atribucion
+        // v_atribucion — no filterable columns
         const { data: atData } = await supabase.from("v_atribucion").select("*");
 
-        const filteredEv = applyTextFilters(evData || []);
-        setEventos(filteredEv);
+        setEventos(evData || []);
         setKpiSemanal(semData || []);
-        setTransportadoras(applyTextFilters(trData || []));
-        setRiesgo(applyTextFilters(riData || []));
+        setTransportadoras(trData || []);
+        setRiesgo(riData || []);
         setAtribucion(atData || []);
       } catch (err) {
         console.error("Error loading KPIs Operativos:", err);
@@ -132,7 +127,7 @@ const KPIsOperativosSection = () => {
       }
     };
     load();
-  }, [fAnio, fMes, fSemana, fTransp, fProv, fCiudad, applyFilters, applyTextFilters]);
+  }, [fAnio, fMes, fSemana, fTransp, fProv, fCiudad, applyAllFilters]);
 
   /* ── KR1: Velocidad ── */
   const kr1 = useMemo(() => {
