@@ -62,15 +62,15 @@ const KPIsOperativosSection = () => {
   // Load filter options from logistica_eventos
   useEffect(() => {
     const loadFilters = async () => {
-      const { data } = await supabase.from("logistica_eventos").select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino");
+      const { data } = await supabase.from("logistica_eventos").select("orden_anio, orden_mes, orden_semana, transportadora, proveedor, ciudad_destino").limit(50000);
       if (!data) return;
       setFilterOpts({
-        anios: [...new Set(data.map(r => r.orden_anio).filter(Boolean))].sort((a, b) => a - b) as number[],
-        meses: [...new Set(data.map(r => r.orden_mes).filter(Boolean))].sort((a, b) => a - b) as number[],
-        semanas: [...new Set(data.map(r => r.orden_semana).filter(Boolean))].sort((a, b) => a - b) as number[],
-        transportadoras: [...new Set(data.map(r => r.transportadora).filter(Boolean))].sort() as string[],
-        proveedores: [...new Set(data.map(r => r.proveedor).filter(Boolean))].sort() as string[],
-        ciudades: [...new Set(data.map(r => r.ciudad_destino).filter(Boolean))].sort() as string[],
+        anios: [...new Set(data.map(r => r.orden_anio).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        meses: [...new Set(data.map(r => r.orden_mes).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        semanas: [...new Set(data.map(r => r.orden_semana).filter(v => v != null))].sort((a, b) => a - b) as number[],
+        transportadoras: [...new Set(data.map(r => r.transportadora).filter(v => v != null && v !== ""))].sort() as string[],
+        proveedores: [...new Set(data.map(r => r.proveedor).filter(v => v != null && v !== ""))].sort() as string[],
+        ciudades: [...new Set(data.map(r => r.ciudad_destino).filter(v => v != null && v !== ""))].sort() as string[],
       });
     };
     loadFilters();
