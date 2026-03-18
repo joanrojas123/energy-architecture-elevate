@@ -155,7 +155,7 @@ const Index = () => {
            <TabsList className="mb-4">
            <TabsTrigger value="resumen">Resumen</TabsTrigger>
            <TabsTrigger value="panorama" className="hidden">Panorama</TabsTrigger>
-           <TabsTrigger value="tendencias" className="hidden">Tendencias</TabsTrigger>
+           <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
            <TabsTrigger value="metas" className="hidden">Metas</TabsTrigger>
            <TabsTrigger value="logistica" className="hidden">Logística Avanzada</TabsTrigger>
            <TabsTrigger value="kpis-operativos" className="hidden">KPIs Logística</TabsTrigger>

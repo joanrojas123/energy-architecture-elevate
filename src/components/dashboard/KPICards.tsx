@@ -43,6 +43,7 @@ const KPICards = ({ metrics }: KPICardsProps) => {
   const principales: CardDef[] = [
     { label: "REVENUE PVP", value: fmt(metrics.totalRevenue), icon: DollarSign, color: "text-success", bgColor: "bg-success/10", tooltip: "Suma de PVP × Unidades excluyendo cancelados/rechazados" },
     { label: "ÓRDENES", value: num(metrics.totalOrdenes), icon: ShoppingCart, color: "text-process", bgColor: "bg-process/10", tooltip: "Órdenes únicas activas (excluye canceladas/rechazadas)" },
+    { label: "UNIDADES", value: num(metrics.totalUnidades), icon: Package, color: "text-process", bgColor: "bg-process/10", tooltip: "Suma de unidades pedidas excluyendo cancelados/rechazados" },
     { label: "AOV", value: fmt(metrics.aov), icon: TrendingUp, color: "text-pending", bgColor: "bg-pending/10", tooltip: "Average Order Value: Revenue / Órdenes" },
     { label: "UPO", value: metrics.upo.toFixed(2), icon: Package, color: "text-process", bgColor: "bg-process/10", tooltip: "Units Per Order: Unidades / Órdenes" },
     { label: "TASA ÉXITO", value: `${metrics.tasaExito.toFixed(1)}%`, icon: Percent, color: "text-success", bgColor: "bg-success/10", tooltip: "% de órdenes entregadas sobre el total activo" },
@@ -127,7 +128,7 @@ const KPICards = ({ metrics }: KPICardsProps) => {
     <div className="space-y-4">
       {/* PRINCIPALES — 5 in a row */}
       <SectionHeader title="Principales" />
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
         {principales.map(renderCard)}
       </div>
 
