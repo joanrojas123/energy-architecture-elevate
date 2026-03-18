@@ -50,7 +50,7 @@ interface LogisticaEventoRow {
   dias_logistica_acum: number;
   dias_transp_acum: number;
   estado_actual_orden: string;
-  fecha_creacion: string;
+  fecha_creacion_col: string;
 }
 
 interface WeeklyOrdersPoint {
@@ -139,7 +139,7 @@ async function fetchLogisticaEventos(): Promise<LogisticaEventoRow[]> {
           "dias_logistica_acum",
           "dias_transp_acum",
           "estado_actual_orden",
-          "fecha_creacion",
+          "fecha_creacion_col",
         ].join(",")
       )
       .range(from, from + pageSize - 1);
@@ -170,7 +170,7 @@ async function fetchLogisticaEventos(): Promise<LogisticaEventoRow[]> {
     dias_logistica_acum: asNumber(r.dias_logistica_acum),
     dias_transp_acum: asNumber(r.dias_transp_acum),
     estado_actual_orden: asString(r.estado_actual_orden),
-    fecha_creacion: asString(r.fecha_creacion),
+    fecha_creacion_col: asString(r.fecha_creacion_col),
   }));
 }
 
@@ -183,8 +183,8 @@ function dedupeByOrderLatest(rows: LogisticaEventoRow[]): LogisticaEventoRow[] {
       map.set(r.order_id, r);
       continue;
     }
-    const a = new Date(existing.fecha_creacion).getTime();
-    const b = new Date(r.fecha_creacion).getTime();
+    const a = new Date(existing.fecha_creacion_col).getTime();
+    const b = new Date(r.fecha_creacion_col).getTime();
     if (Number.isFinite(b) && (!Number.isFinite(a) || b > a)) map.set(r.order_id, r);
   }
   return [...map.values()];
@@ -326,8 +326,8 @@ const ReporteLogistico = () => {
 
   const detailRows = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => {
-      const ta = new Date(a.fecha_creacion).getTime();
-      const tb = new Date(b.fecha_creacion).getTime();
+      const ta = new Date(a.fecha_creacion_col).getTime();
+      const tb = new Date(b.fecha_creacion_col).getTime();
       if (!Number.isFinite(ta) && !Number.isFinite(tb)) return 0;
       if (!Number.isFinite(ta)) return 1;
       if (!Number.isFinite(tb)) return -1;
@@ -592,7 +592,7 @@ const ReporteLogistico = () => {
                 const ok = Number.isFinite(lt) && lt > 0 ? lt <= META_ACIDO_DIAS : true;
                 return (
                   <TableRow key={r.order_id}>
-                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.fecha_creacion)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.fecha_creacion_col)}</TableCell>
                     <TableCell className="text-xs font-mono">{r.order_id}</TableCell>
                     <TableCell className="text-xs">{r.proveedor || "-"}</TableCell>
                     <TableCell className="text-xs">{r.estado_actual_orden || "-"}</TableCell>
