@@ -253,10 +253,9 @@ const TrendsSection = ({ data }: TrendsSectionProps) => {
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="marcas">Marcas</TabsTrigger>
-          <TabsTrigger value="estrellas">Estrellas</TabsTrigger>
-          <TabsTrigger value="logistica">Logística</TabsTrigger>
-        </TabsList>
+          <TabsTrigger value="marcas" className="hidden">Marcas</TabsTrigger>
+          <TabsTrigger value="estrellas" className="hidden">Estrellas</TabsTrigger>
+          <TabsTrigger value="logistica" className="hidden">Logística</TabsTrigger>        </TabsList>
 
         {/* ══ GENERAL ══ */}
         <TabsContent value="general" className="space-y-4">
