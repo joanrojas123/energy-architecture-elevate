@@ -14,6 +14,7 @@ import {
   fetchVentas,
   calculateMetrics,
   getUniqueMeses,
+  getUniqueValues,
   type SalesRow,
   type DashboardMetrics,
 } from "@/lib/csv-processor";
