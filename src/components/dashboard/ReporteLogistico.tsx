@@ -49,7 +49,7 @@ interface LogisticaEventoRow {
   dias_marca_acum: number;
   dias_logistica_acum: number;
   dias_transp_acum: number;
-  estado_actual: string;
+  estado_actual_orden: string;
   fecha_creacion: string;
 }
 
@@ -138,7 +138,7 @@ async function fetchLogisticaEventos(): Promise<LogisticaEventoRow[]> {
           "dias_marca_acum",
           "dias_logistica_acum",
           "dias_transp_acum",
-          "estado_actual",
+          "estado_actual_orden",
           "fecha_creacion",
         ].join(",")
       )
@@ -169,7 +169,7 @@ async function fetchLogisticaEventos(): Promise<LogisticaEventoRow[]> {
     dias_marca_acum: asNumber(r.dias_marca_acum),
     dias_logistica_acum: asNumber(r.dias_logistica_acum),
     dias_transp_acum: asNumber(r.dias_transp_acum),
-    estado_actual: asString(r.estado_actual),
+    estado_actual_orden: asString(r.estado_actual_orden),
     fecha_creacion: asString(r.fecha_creacion),
   }));
 }
@@ -595,7 +595,7 @@ const ReporteLogistico = () => {
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.fecha_creacion)}</TableCell>
                     <TableCell className="text-xs font-mono">{r.order_id}</TableCell>
                     <TableCell className="text-xs">{r.proveedor || "-"}</TableCell>
-                    <TableCell className="text-xs">{r.estado_actual || "-"}</TableCell>
+                    <TableCell className="text-xs">{r.estado_actual_orden || "-"}</TableCell>
                     <TableCell className="text-xs">{Number.isFinite(lt) && lt > 0 ? `${fmtNum(lt)} d` : "-"}</TableCell>
                     <TableCell className="text-xs">
                       <Badge
