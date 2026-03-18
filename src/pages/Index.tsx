@@ -9,6 +9,7 @@ import LogisticaAvanzadaSection from "@/components/dashboard/LogisticaAvanzadaSe
 import KPIsOperativosSection from "@/components/dashboard/KPIsOperativosSection";
 import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ResumenFilters from "@/components/dashboard/ResumenFilters";
 import {
   fetchVentas,
   calculateMetrics,
@@ -33,6 +34,13 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [filterMarca, setFilterMarca] = useState("all");
+  const [filterEstrella, setFilterEstrella] = useState("all");
+  const [filterEstado, setFilterEstado] = useState("all");
+  const [filterTransportadora, setFilterTransportadora] = useState("all");
+  const [filterCategoria, setFilterCategoria] = useState("all");
+  const [filterFechaDesde, setFilterFechaDesde] = useState<Date | undefined>(undefined);
+  const [filterFechaHasta, setFilterFechaHasta] = useState<Date | undefined>(undefined);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -53,11 +61,44 @@ const Index = () => {
   useEffect(() => { loadData(); }, [loadData]);
 
   const meses = useMemo(() => getUniqueMeses(rawData), [rawData]);
+  const opcionesMarcas = useMemo(() => getUniqueValues(rawData, "marca"), [rawData]);
+  const opcionesEstrellas = useMemo(() => getUniqueValues(rawData, "estrella_nombre"), [rawData]);
+  const opcionesEstados = useMemo(() => getUniqueValues(rawData, "estado_actual"), [rawData]);
+  const opcionesTransportadoras = useMemo(() => getUniqueValues(rawData, "shipping_company"), [rawData]);
+  const opcionesCategorias = useMemo(() => getUniqueValues(rawData, "categoria"), [rawData]);
+
+  const clearFilters = () => {
+    setFilterMarca("all"); setFilterEstrella("all"); setFilterEstado("all");
+    setFilterTransportadora("all"); setFilterCategoria("all");
+    setFilterFechaDesde(undefined); setFilterFechaHasta(undefined);
+  };
 
   const filteredData = useMemo(() => {
-    if (selectedMes === "all") return rawData;
-    return rawData.filter((r) => r.mes_id === selectedMes);
-  }, [rawData, selectedMes]);
+    let d = selectedMes === "all" ? rawData : rawData.filter((r) => r.mes_id === selectedMes);
+    if (filterEstado !== "all") d = d.filter((r) => r.estado_actual === filterEstado);
+    if (filterMarca !== "all") d = d.filter((r) => r.marca === filterMarca);
+    if (filterEstrella !== "all") d = d.filter((r) => r.estrella_nombre === filterEstrella);
+    if (filterTransportadora !== "all") d = d.filter((r) => r.shipping_company === filterTransportadora);
+    if (filterCategoria !== "all") d = d.filter((r) => r.categoria === filterCategoria);
+    if (filterFechaDesde || filterFechaHasta) {
+      d = d.filter((r) => {
+        if (!r.fecha_creacion) return false;
+        const parts = r.fecha_creacion.split("/");
+        if (parts.length !== 3) return false;
+        const date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        if (isNaN(date.getTime())) return false;
+        if (filterFechaDesde && date < filterFechaDesde) return false;
+        if (filterFechaHasta) {
+          const hasta = new Date(filterFechaHasta);
+          hasta.setHours(23, 59, 59, 999);
+          if (date > hasta) return false;
+        }
+        return true;
+      });
+    }
+    return d;
+  }, [rawData, selectedMes, filterEstado, filterMarca, filterEstrella,
+      filterTransportadora, filterCategoria, filterFechaDesde, filterFechaHasta]);
 
   const metrics = useMemo(
     () => (filteredData.length > 0 ? calculateMetrics(filteredData, rawData) : EMPTY_METRICS),
@@ -113,7 +154,29 @@ const Index = () => {
            <TabsTrigger value="kpis-operativos" className="hidden">KPIs Logística</TabsTrigger>
           </TabsList>
 
-            <TabsContent value="resumen" className="space-y-6">
+          <TabsContent value="resumen" className="space-y-6">
+              <ResumenFilters
+                marcas={opcionesMarcas}
+                estrellas={opcionesEstrellas}
+                estados={opcionesEstados}
+                transportadoras={opcionesTransportadoras}
+                categorias={opcionesCategorias}
+                filterMarca={filterMarca}
+                filterEstrella={filterEstrella}
+                filterEstado={filterEstado}
+                filterTransportadora={filterTransportadora}
+                filterCategoria={filterCategoria}
+                filterFechaDesde={filterFechaDesde}
+                filterFechaHasta={filterFechaHasta}
+                setFilterMarca={setFilterMarca}
+                setFilterEstrella={setFilterEstrella}
+                setFilterEstado={setFilterEstado}
+                setFilterTransportadora={setFilterTransportadora}
+                setFilterCategoria={setFilterCategoria}
+                setFilterFechaDesde={setFilterFechaDesde}
+                setFilterFechaHasta={setFilterFechaHasta}
+                onClear={clearFilters}
+              />
               <KPICards metrics={metrics} />
               <AnalyticsSection data={filteredData} />
               <DataTable data={filteredData} />
