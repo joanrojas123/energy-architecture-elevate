@@ -75,18 +75,23 @@ const Index = () => {
   };
 
   const filteredData = useMemo(() => {
-    let d = selectedMes === "all" ? rawData : rawData.filter((r) => r.mes_id === selectedMes);
+    let d = rawData;
+  
+    // Filtro de mes solo si no hay filtro de fechas activo
+    if (!filterFechaDesde && !filterFechaHasta) {
+      d = selectedMes === "all" ? rawData : rawData.filter((r) => r.mes_id === selectedMes);
+    }
+  
     if (filterEstado !== "all") d = d.filter((r) => r.estado_actual === filterEstado);
     if (filterMarca !== "all") d = d.filter((r) => r.marca === filterMarca);
     if (filterEstrella !== "all") d = d.filter((r) => r.estrella_nombre === filterEstrella);
     if (filterTransportadora !== "all") d = d.filter((r) => r.shipping_company === filterTransportadora);
     if (filterCategoria !== "all") d = d.filter((r) => r.categoria === filterCategoria);
+  
     if (filterFechaDesde || filterFechaHasta) {
       d = d.filter((r) => {
         if (!r.fecha_creacion) return false;
-        const parts = r.fecha_creacion.split("/");
-        if (parts.length !== 3) return false;
-        const date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        const date = new Date(r.fecha_creacion);
         if (isNaN(date.getTime())) return false;
         if (filterFechaDesde && date < filterFechaDesde) return false;
         if (filterFechaHasta) {
@@ -97,6 +102,7 @@ const Index = () => {
         return true;
       });
     }
+  
     return d;
   }, [rawData, selectedMes, filterEstado, filterMarca, filterEstrella,
       filterTransportadora, filterCategoria, filterFechaDesde, filterFechaHasta]);
