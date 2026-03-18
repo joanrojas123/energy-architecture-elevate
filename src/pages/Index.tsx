@@ -19,6 +19,7 @@ import {
   type DashboardMetrics,
 } from "@/lib/csv-processor";
 import { FileSpreadsheet, Loader2 } from "lucide-react";
+import ReporteLogistico from "@/components/dashboard/ReporteLogistico";
 
 const EMPTY_METRICS: DashboardMetrics = {
   totalOrdenes: 0, totalUnidades: 0, totalRevenue: 0, tasaExito: 0,
@@ -153,13 +154,14 @@ const Index = () => {
         ) : (
           <Tabs defaultValue="resumen" className="w-full">
            <TabsList className="mb-4">
-           <TabsTrigger value="resumen">Resumen</TabsTrigger>
-           <TabsTrigger value="panorama" className="hidden">Panorama</TabsTrigger>
-           <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
-           <TabsTrigger value="metas" className="hidden">Metas</TabsTrigger>
-           <TabsTrigger value="logistica" className="hidden">Logística Avanzada</TabsTrigger>
-           <TabsTrigger value="kpis-operativos" className="hidden">KPIs Logística</TabsTrigger>
-          </TabsList>
+  <TabsTrigger value="resumen">Resumen</TabsTrigger>
+  <TabsTrigger value="panorama" className="hidden">Panorama</TabsTrigger>
+  <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
+  <TabsTrigger value="metas" className="hidden">Metas</TabsTrigger>
+  <TabsTrigger value="logistica" className="hidden">Logística Avanzada</TabsTrigger>
+  <TabsTrigger value="kpis-operativos" className="hidden">KPIs Logística</TabsTrigger>
+  <TabsTrigger value="reporte-logistico">OKRs Logística</TabsTrigger>
+</TabsList>
 
           <TabsContent value="resumen" className="space-y-6">
               <ResumenFilters
@@ -207,6 +209,9 @@ const Index = () => {
 
             <TabsContent value="kpis-operativos" className="space-y-6">
               <KPIsOperativosSection />
+            </TabsContent>
+            <TabsContent value="reporte-logistico" className="space-y-6">
+              <ReporteLogistico />
             </TabsContent>
           </Tabs>
         )}
