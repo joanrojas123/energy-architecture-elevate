@@ -10,6 +10,7 @@ import KPIsOperativosSection from "@/components/dashboard/KPIsOperativosSection"
 import PanoramaSection from "@/components/dashboard/PanoramaSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ResumenFilters from "@/components/dashboard/ResumenFilters";
+import QuarterSection from "@/components/dashboard/QuarterSection";
 import {
   fetchVentas,
   calculateMetrics,

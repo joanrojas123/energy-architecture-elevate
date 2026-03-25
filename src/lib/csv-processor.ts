@@ -33,6 +33,7 @@ export interface SalesRow {
   estrella_city: string;
   estrella_status: string;
   estrella_inactivity_segment: string;
+  quarter: string;
   rate_type: string;
   [key: string]: string | number;
 }
@@ -152,6 +153,7 @@ export async function fetchVentas(): Promise<SalesRow[]> {
       estrella_city: str(raw.estrella_city),
       estrella_status: str(raw.estrella_status),
       estrella_inactivity_segment: str(raw.estrella_inactivity_segment),
+      quarter: str(raw.order_quarter_derived),
       rate_type: str(raw.rateType),
     });
   }
